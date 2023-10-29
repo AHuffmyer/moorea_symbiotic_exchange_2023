@@ -98,9 +98,9 @@ Prepare the appropriate number of coral samples (that have previously been secur
 
 Prior to incubations, allow corals to sit in a tub at ambient temperature (27°C) for about 30 minutes to dark adapt. 
 
-Sample metadata [can be found on GitHub here](https://github.com/AHuffmyer/moorea_symbiotic_exchange_2023/blob/main/data/isotopes/sample_metadata_isotopes.xlsx). 
+Sample metadata [can be found on GitHub here](). 
 
-Run metadata and plate maps [can be found on GitHub here](https://github.com/AHuffmyer/moorea_symbiotic_exchange_2023/blob/main/data/isotopes/plate_maps_isotopes.xlsx). 
+Run metadata and plate maps [can be found on GitHub here](). 
 
 Next, load samples individually into jars by placing the coral on the plug stand, filling the jar with the appropriate solution, and securing the coral in the jar. The jar can then be submerged on the stir plate with stirring. 
 
