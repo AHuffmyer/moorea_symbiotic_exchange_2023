@@ -55,6 +55,8 @@ Whirl packs of samples can then be placed in coolers on the boat for transport b
 
 It will be best to have 2-3 people. One person can hold the whirl pack and ruler while the other takes a photo. That person can then take a sample and the other person hold the samples in a mesh bag. 
 
+Enter data on the collection [metadata sheet here](https://github.com/AHuffmyer/moorea_symbiotic_exchange_2023/blob/main/data/field_collection/collection_metadata.xlsx). 
+
 # 2. Attaching corals to plugs, take images, and sample DNA 
 
 After bringing samples back to the lab, place the samples in a water table in their open whirl pack. Allow for plenty of water flow. 
@@ -71,6 +73,8 @@ Once attached, take another image with a ruler and color scale.
 
 Save these whirl packs to be used for sampling later on. 
 
-Place the corals on plugs on a rack and allow to recover at ambient temperature and ambient light (<500 PAR) for 1-2 days prior to sampling. 
+Place the corals on plugs on a rack and allow to recover at ambient temperature and ambient light (<500 PAR, use shade if necessary) for 1-2 days prior to sampling. 
 
 Upload images and data sheets to GitHub. 
+
+Enter data on the DNA sampling [metadata sheet here](https://github.com/AHuffmyer/moorea_symbiotic_exchange_2023/blob/main/data/dna/dna_metadata.xlsx). 
