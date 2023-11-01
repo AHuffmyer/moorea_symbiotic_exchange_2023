@@ -7,10 +7,23 @@ tags: respirometry, coral, physiology
 projects: E5, Putnam Lab
 ---
 
-# PI Curve Protocol
+# PR Rates Protocol
 
 Original: 20200104
 Last Revised: 20231031
+
+This protocol is revised from the PI Curve protocol. 
+
+Follow this protocol revising only to reduce the number of light steps. For this P & R measurements we will do the following light steps: 
+
+*Dark adapt for 20-30 minutes prior to measurement*
+0 PAR: Dark respiration
+Low PAR: Low light photosynthesis
+Medium PAR: Medium light photosynthesis
+High PAR: High light photosynthesis
+0 PAR: Light enhanced respiration
+
+PAR levels will be determined by Ek in previous PI curves. 
 
 Modified from Silbiger Lab Protocols - [Respirometer Manual](https://github.com/SilbigerLab/Respirometry/blob/master/Respirometer_SOP.md) 
 
@@ -67,10 +80,11 @@ Setting up the respirometry system for the first time in a new place:
 2. Measure and record the temperature and salinity of the source water (i.e., in the water table where the coral are kept). 
 3. Place an aquarium pump and a heater into each bin. **The pump(s) and heater(s) must be fully submerged before powering on.** Plug in each piece of equipment, making sure the outlets have an appropriate voltage. Adjust the temperature of the bins so that they approximate the water temperature experienced by the coral being measured. Use the Apex system if desired.  
 4. While you wait for the bath and source water to reach the desired temperature, set up the respirometer and prepare the chambers.  
+5. During this time, dark adapt the coral samples for 20-30 minutes in a water bin in a dark room. 
 
 <a name="Chambers"></a> **Filling and Securing Chambers**
 
-1. Fill the chambers with temperature controlled water, add the plug stand and stir bars, and add corals to each chamber. Seal the top.  
+1. Fill the chambers with temperature controlled water, add the plug stand and stir bars, and add corals to each chamber after dark adapting. Seal the top.  
 	* Leave one chamber per bin filled with only water and no coral. This will serve as the blank.
 3. Record the identify of the coral fragment or the blank with its corresponding chamber number.   
 5. When you are ready to place the chambers in the stand, use your thumb to cover the holes (for the temperature and oxygen probes) that are in the top of the chamber. Move and gently place the chambers in a random position in the stand. Record the position of each chamber.
