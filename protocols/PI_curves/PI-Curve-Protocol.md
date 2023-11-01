@@ -33,9 +33,9 @@ Protocol for set-up and take-down of the respirometer in conjunction with the Ox
 
 <a name="Supplies"></a> **Supplies**
 
-- Respirometry jars/chambers
-- Magnetic stir bars 
-- Water bath bins
+- 18 Respirometry jars/chambers
+- 18 Magnetic stir bars 
+- 2 Water bath bins
 - Apogee quantum meter (MQ-510) [(User manual)](https://www.apogeeinstruments.com/content/MQ-510-manual.pdf)
 - Source water to fill chambers (can be filled in water table holding coral)
 - Heater(s)
@@ -44,6 +44,7 @@ Protocol for set-up and take-down of the respirometer in conjunction with the Ox
 Description)](https://www.aquaillumination.com/products/prime)
 - Large graduated cylinder (500 mL)
 - Isopropanol wipes
+- 2 OXY 10 units
 
 <a name="Initial"></a>**Initial Setup**
 
@@ -71,7 +72,7 @@ Setting up the respirometry system for the first time in a new place:
 <a name="Chambers"></a> **Filling and Securing Chambers**
 
 1. Fill the chambers with temperature controlled water, add the plug stand and stir bars, and add corals to each chamber. Seal the top.  
-	* Leave one chamber per bin filled with only water and no coral. This will serve as the blank.
+	* Leave one chamber per bin filled with only water and no coral. This will serve as the blank. There will be two blanks per run. 
 3. Record the identify of the coral fragment or the blank with its corresponding chamber number.   
 5. When you are ready to place the chambers in the stand, use your thumb to cover the holes (for the temperature and oxygen probes) that are in the top of the chamber. Move and gently place the chambers in a random position in the stand. Record the position of each chamber.
 6. Start the stirring.     
