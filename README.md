@@ -20,6 +20,12 @@ ashuffmyer@uri.edu
 4. Output: Contains data summaries or data generated from scripts in the Code folder. 
 5. Protocols: Contains documents with protocols for each proceedure.  
 
+# Project Overview
+
+A visual overview of this project can be found below. 
+
+![](https://github.com/AHuffmyer/ASH_Putnam_Lab_Notebook/blob/master/images/NotebookImages/Moorea2023/Moorea_design_v2.png?raw=true)  
+
 # Online Lab Notebook 
 
 [This project is documented through daily online laboratory notebooks available here](https://ahuffmyer.github.io/ASH_Putnam_Lab_Notebook/Moorea-2023-Symbiotic-Nutritional-Exchange-Project-Daily-Entries/).  
