@@ -50,3 +50,7 @@ rsconnect/
 
 # DS Store 
 .DS_Store
+
+# photos folder 
+photos/
+
