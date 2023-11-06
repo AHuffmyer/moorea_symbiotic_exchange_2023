@@ -164,8 +164,7 @@ write.csv(anova_results, file = "output/environmental/anova_results.csv", row.na
 Calculate descriptive statistics   
 ```{r}
 summary<-daily_calc.short%>%
-  group_by(group)%>%
-  select(!tank)%>%
+  group_by(tank)%>%
   select(!date)%>%
   select(!time)%>%
   summarise(across(everything(), list(mean = mean, sd = sd), na.rm = TRUE)); summary
