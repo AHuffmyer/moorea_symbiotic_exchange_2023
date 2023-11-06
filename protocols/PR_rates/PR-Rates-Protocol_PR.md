@@ -14,21 +14,17 @@ Last Revised: 20231031
 
 This protocol is revised from the PI Curve protocol. 
 
-Follow this protocol revising only to reduce the number of light steps. For this P & R measurements we will do the following light steps: 
+For this P & R measurements we will do the following light steps: 
 
-*Dark adapt for 20-30 minutes prior to measurement*
-0 PAR: Dark respiration
-Low PAR: Low light photosynthesis
-Medium PAR: Medium light photosynthesis
-High PAR: High light photosynthesis
-0 PAR: Light enhanced respiration
+Ik PAR: Photosynthesis at saturating irradiance (10 min)
+0 PAR: Light enhanced respiration (10 min)
+Ik PAR: Photosnthesis at saturating irradiance to standardize for molecular sampling (5 min) 
 
 PAR levels will be determined by Ek in previous PI curves. 
 
 Modified from Silbiger Lab Protocols - [Respirometer Manual](https://github.com/SilbigerLab/Respirometry/blob/master/Respirometer_SOP.md) 
 
 Protocol for set-up and take-down of the respirometer in conjunction with the Oxy-10 probes and PreSens program ([User Manual Here](/PreSens_SOP.md)).
-
 
 **Contents**
 - [**Supplies**](#Supplies)
@@ -81,13 +77,12 @@ Setting up the respirometry system for the first time in a new place:
 2. Measure and record the temperature and salinity of the source water (i.e., in the water table where the coral are kept). 
 3. Place an aquarium pump and a heater into each bin. **The pump(s) and heater(s) must be fully submerged before powering on.** Plug in each piece of equipment, making sure the outlets have an appropriate voltage. Adjust the temperature of the bins so that they approximate the water temperature experienced by the coral being measured. Use the Apex system if desired.  
 4. While you wait for the bath and source water to reach the desired temperature, set up the respirometer and prepare the chambers.  
-5. During this time, dark adapt the coral samples for 20-30 minutes in a water bin in a dark room. 
 
 <a name="Chambers"></a> **Filling and Securing Chambers**
 
 1. Fill the chambers with temperature controlled water, add the plug stand and stir bars, and add corals to each chamber after dark adapting. Seal the top.  
-	* Leave one chamber per bin filled with only water and no coral. This will serve as the blank. There will be two blanks per run. 
-3. Record the identify of the coral fragment or the blank with its corresponding chamber number.   
+	* Leave one chamber per bin filled with only water and no coral. This will serve as the blank. There will be two blanks per run. Fill one chamber with water and a temperature logger. This chamber does not need to be sealed. 
+3. Record the identity of the coral fragment or the blank with its corresponding chamber number.   
 5. When you are ready to place the chambers in the stand, use your thumb to cover the holes (for the temperature and oxygen probes) that are in the top of the chamber. Move and gently place the chambers in a random position in the stand. Record the position of each chamber.
 6. Start the stirring.     
 
@@ -120,13 +115,13 @@ Last checks before starting to record data using the PreSens program:
 
 <a name="Data"></a> **Collecting the Data**
 
-1.  The first light level is 0. Turn off the lights in the room during this measurement.
+1.  The first light level is Ik. Turn off the lights in the room during this measurement.
 2. Navigate to the "Live View" tab.
 3. Select Channel 1 in the PreSens software. Click "Start." Continue through each channel, starting the data collection. Each channel must be started individually. Verify that all channels have been started. Record the start time. 
 4. After 10 minutes, click "Stop" for each channel. Record the stop time. 
 5. Adjust the light settings to the desired intensity. 
 6. Restart the data collection only after 2 or more minutes has passed since stopping the previous measurement.
-	* **Helpful tip**: Approximately 20-30 minutes before the end of the respirometry run (i.e., during the 8th light intensity level) begin preparing the next set of samples. 
+	* **Helpful tip**: Approximately 20-30 minutes before the end of the respirometry run begin preparing the next set of samples. 
 
 7. **As soon as the data for the final light intensity has been collected, export and save the data.** To export the data
 	* Navigate to the "Measurements" tab
@@ -144,9 +139,10 @@ Last checks before starting to record data using the PreSens program:
 1. Remove the probes and carefully place or drape them in a secure location.  
 2. Unscrew the holding plates and remove a chamber.  
 3. Unscrew the airlock seal on the lid (best method for pouring the water into another container) and pour the water into the graduated cylinder. Record the volume. 
-4. Remove the coral sample from the plug and place in a labeled whirl pack. Freeze in liquid nitrogen and place in the -40C freezer.   
+4. Remove the coral sample from the plug and clip a piece for molecular samples small enough to not significantly affect surface area. Store in 700 uL DNA/RNA shield in a labeled tube. Store at -40C.  
+5. Take the remainder of the fragment, freeze in liquid nitrogen, and store at -40C.    
 
-<a name="Take-Down"></a> **Respirometer Take-Down and CleanUp**
+<a name="Take-Down"></a> **Respirometer Take-Down and Clean Up**
 
 1. Using a isopropanol wipe, wipe down the cord of each Oxy-10 probe to remove any remaining salt deposits or particulates, then recoil the probes and store them in a secure place.   
 2. Rinse all chambers and stir bars with fresh water and let them dry overnight.  
