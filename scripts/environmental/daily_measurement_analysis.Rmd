@@ -66,45 +66,30 @@ pHSlope<-pHcalib %>%
 pH is now calculated as Total pH in the "pH" column. Now select the desired columns to analyze further.  
 ```{r}
 daily_calc<-pHSlope%>%
-  select(date, time, tank, group, temp.C, pH.total, pH.nbs, sal.psu, flow.mL.5s, par)
-```
-
-## Calculate flow  
-
-Calculate flow to total mL per minute rather than 5 sec.  
-```{r}
-daily_calc<-daily_calc%>%
-  mutate(flow.L.min=(flow.mL.5s*12)/1000)%>%
-  select(!flow.mL.5s)
+  select(date, time, tank, temp.C, pH.total, sal.psu, par)
 ```
 
 ## Change to long format
 
 Change data format to long format 
 ```{r}
-daily_calc.long <-daily_calc %>% pivot_longer(cols=temp.C:flow.L.min,
+daily_calc.long <-daily_calc %>% pivot_longer(cols=temp.C:par,
   names_to = "metric",
   values_to = "value")
 ```
 
 Filter by relevant dates. 
 ```{r}
-daily_calc.long<-daily_calc.long%>%
-  filter(date>as.POSIXct("2023-06-18"))
+#daily_calc.long<-daily_calc.long%>%
+#  filter(date>as.POSIXct("2023-06-18"))
 ```
 
 ## Plot metrics of interest  
 
-
-EDIT BELOW THIS POINT WHEN WE HAVE DATA 
-
-
-
-
-Plot by tank colored by symbiont treatment.      
+Plot by tank colored by tank.      
 ```{r}
 daily_tanks<-daily_calc.long %>%
-  ggplot(aes(x=date, y=value, colour=group))+
+  ggplot(aes(x=date, y=value, colour=tank))+
   geom_point(size=2)+
   #geom_vline(xintercept = as.numeric(ymd("2022-10-19")), linetype="dashed", 
                 #color = "black", size=0.5)+
@@ -119,67 +104,23 @@ ggsave(filename="figures/environmental/tank_daily_measurements.png", plot=daily_
 
 ```
 
-Plot by treatment summarizing tanks within each group    
-```{r}
-daily_treatment<-daily_calc.long %>%
-  ggplot(aes(x=date, y=value, colour=group, group=interaction(group, date)))+
-  geom_point()+
-  geom_boxplot()+
-  #geom_vline(xintercept = as.numeric(ymd("2022-10-19")), linetype="dashed", 
-                #color = "black", size=0.5)+
-  #geom_vline(xintercept = as.numeric(ymd("2022-10-24")), linetype="solid", 
-                #color = "black", size=0.5)+
-  #scale_colour_manual(values=c("orange", "brown4"))+
-  xlab("Date")+
-  facet_grid(metric ~ ., scales = "free")+
-  theme_bw(); daily_treatment
-
-ggsave(filename="figures/environmental/boxplot_daily_measurements.png", plot=daily_treatment, dpi=300, width=6, height=8, units="in")
-```
-
-Plot means for each symbiont type, filtering to measurements in treatment conicals. 
-```{r}
-daily_treatment_summary<-daily_calc.long %>%
-  filter(group %in% c("Cladocopium", "Mixed", "Wildtype"))%>%
-  
-  ggplot(aes(x=group, y=value, colour=group))+
-  geom_point()+
-  geom_boxplot()+
-  scale_colour_manual(name="", values=c("orange", "brown4", "gray"))+
-  xlab("Date")+
-  ylab("Value")+
-  facet_wrap(~ metric, scales = "free")+
-  theme_classic(); daily_treatment_summary
-
-ggsave(filename="figures/environmental/summary_daily_measurements.png", plot=daily_treatment_summary, dpi=300, width=9, height=6, units="in")
-```
-
 ## Test for differences between tanks  
 
 Obtain a short format dataset.  
 ```{r}
 daily_calc.short<-daily_calc.long%>%
-  spread(metric, value)%>%
-  filter(group %in% c("Cladocopium", "Mixed", "Wildtype"))
+  spread(metric, value)
 ```
 
 Test for differences between tanks. 
 
 ```{r}
 daily_calc.short%>%
-  aov(flow.L.min~tank, data=.)%>%
-  summary()
- 
-daily_calc.short%>%
   aov(par~tank, data=.)%>%
   summary()
 
 daily_calc.short%>%
   aov(pH.total~tank, data=.)%>%
-  summary()
-
-daily_calc.short%>%
-  aov(pH.nbs~tank, data=.)%>%
   summary()
 
 daily_calc.short%>%
@@ -191,38 +132,9 @@ daily_calc.short%>%
   summary()
 ```
 
-## Test for differences between treatments  
-
-```{r}
-daily_calc.short%>%
-  aov(flow.L.min~group, data=.)%>%
-  summary()
- 
-daily_calc.short%>%
-  aov(par~group, data=.)%>%
-  summary()
-
-daily_calc.short%>%
-  aov(pH.total~group, data=.)%>%
-  summary()
-
-daily_calc.short%>%
-  aov(pH.nbs~group, data=.)%>%
-  summary()
-
-daily_calc.short%>%
-  aov(sal.psu~group, data=.)%>%
-  summary()
-
-daily_calc.short%>%
-  aov(temp.C~group, data=.)%>%
-  summary()
-```
-
 Output statistical results to a table. 
 ```{r}
-stats<-daily_calc.long%>%
-  filter(group %in% c("Cladocopium", "Mixed", "Wildtype"))
+stats<-daily_calc.long
   
 metric_list <- unique(stats$metric)
 
@@ -233,7 +145,7 @@ anova_results <- data.frame()
 for (i in metric_list) {
   anova_result <- stats %>%
     filter(metric == i) %>%
-    aov(value ~ group, data = .) %>%
+    aov(value ~ tank, data = .) %>%
     tidy()
 
   # Add the metric column to the ANOVA result

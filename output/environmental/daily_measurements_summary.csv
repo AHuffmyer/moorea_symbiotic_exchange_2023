@@ -1,0 +1,3 @@
+tank,par_mean,par_sd,pH.total_mean,pH.total_sd,sal.psu_mean,sal.psu_sd,temp.C_mean,temp.C_sd
+blue_tank,25,NA,8.004271218385526,NA,36.11,NA,27.84,NA
+water_table,15,NA,8.040904069937405,NA,36.02,NA,27.35,NA
