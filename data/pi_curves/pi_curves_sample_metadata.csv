@@ -18,7 +18,7 @@ Date,sample_id,Chamber.Channel,Position,Run,Species,Lifestage,Temp.Cat,Chamber.V
 20231106,POR-A4,17,P1-9,Run1,Porites,Adult,27.8,167,21723472,
 20231106,POC-A1,18,P2-2,Run1,Pocillopora,Adult,27.8,184,21723472,
 20231106,POC-R2,1,P1-1,Run2,Pocillopora,Recruit,27.8,178,21723472,
-20231106,ACR-R4,2,P1-2,Run2,Acropora,Recruit,27.8,190,21723472,
+20231106,ACR-R4,2,P1-2,Run2,Acropora,Recruit,27.8,190,21723472,Crab on coral
 20231106,POR-A2,3,P1-3,Run2,Porites,Adult,27.8,172,21723472,
 20231106,BK-4,4,P1-4,Run2,Blank,Blank,27.8,181,21723472,
 20231106,ACR-A3,5,P1-5,Run2,Acropora,Adult,27.8,182,21723472,
