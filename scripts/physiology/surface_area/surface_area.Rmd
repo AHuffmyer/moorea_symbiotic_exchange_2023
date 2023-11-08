@@ -23,8 +23,7 @@ library(tidyverse)
 wax.data <- read.csv("data/physiology/surface_area/surface_area_data.csv", header=TRUE)
 
 wax.data$delta.mass.g <- wax.data$weight2.g-wax.data$weight1.g
-stnds <- subset(wax.data, Sample=="Standard")
-stnds <- stnds[-1,] # the largest data point was an artifact outlier. It was removed, as it had bubbles of air escape the wooden sphere, leaving gaps in the wax
+stnds <- subset(wax.data, sample=="Standard")
 
 #calculate the surface area of the spherical standards from the diameter
 stnds$rad <- stnds$Diameter/2
@@ -37,12 +36,12 @@ stnd.curve$coefficients
 summary(stnd.curve)$r.squared
 
 #Calculate surface area using the standard curve
-smpls <- subset(wax.data, Sample=="Coral")
+smpls <- subset(wax.data, sample=="Coral")
 smpls$surface.area.cm2 <- stnd.curve$coefficients[2] * smpls$delta.mass.g + stnd.curve$coefficients[1]
 
 #select the samples only
 smpls <- smpls %>%
-  select(-Sample, -Diameter)
+  select(-sample, -Diameter)
 
 smpls %>%
   count(sample_id) %>% arrange(n)
@@ -51,7 +50,9 @@ smpls %>%
 range(smpls$surface.area.cm2)
 range(stnds$surface.area.cm2)
 
-#Save the output for use in normilzation for phys assays
+# we need to add one smaller in the curve
+
+#Save the output for use in normalization for phys assays
 smpls%>%
   select(sample_id, surface.area.cm2, species, lifestage)%>%
   write_csv("output/physiology/surface_area/surface_area.csv")
