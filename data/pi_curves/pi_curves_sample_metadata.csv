@@ -2,10 +2,10 @@ Date,sample_id,Chamber.Channel,Position,Run,Species,Lifestage,Temp.Cat,Chamber.V
 20231106,ACR-A1,1,P1-1,Run1,Acropora,Adult,27.8,181,21723472,
 20231106,ACR-R5,2,P2-7,Run1,Acropora,Recruit,27.8,177,21723472,
 20231106,ACR-R1,3,P2-3,Run1,Acropora,Recruit,27.8,187,21723472,
-20231106,POC-A5,4,P2-5,Run1,Pocillopora,Adult,27.8,176,21723472,
-20231106,POR-R10,5,P1-3,Run1,Porites,Recruit,27.8,185,21723472,
+20231106,POR-A5,4,P2-5,Run1,Pocillopora,Adult,27.8,176,21723472,"Was POC-A5, Actually POR-A5"
+20231106,POC-R10,5,P1-3,Run1,Porites,Recruit,27.8,185,21723472,"Was POR-R10, Actually POC-R10 "
 20231106,ACR-R10,6,P2-6,Run1,Acropora,Recruit,27.8,189,21723472,
-20231106,POR-R7,7,P1-2,Run1,Porites,Recruit,27.8,180,21723472,
+20231106,POC-R7,7,P1-2,Run1,Porites,Recruit,27.8,180,21723472,"Was POR-R7, Actually POC-R7"
 20231106,BK-2,8,P2-9,Run1,Blank,Blank,27.8,191,21723472,
 20231106,POC-R5,9,P1-4,Run1,Pocillopora,Recruit,27.8,194,21723472,
 20231106,POR-A1,10,P1-5,Run1,Porites,Adult,27.8,177,21723472,
@@ -35,21 +35,21 @@ Date,sample_id,Chamber.Channel,Position,Run,Species,Lifestage,Temp.Cat,Chamber.V
 20231106,POR-A3,16,P2-7,Run2,Porites,Adult,27.8,184,21723472,
 20231106,POR-R4,17,P2-8,Run2,Porites,Recruit,27.8,180,21723472,
 20231106,POC-A2,18,P2-9,Run2,Pocillopora,Adult,27.8,184,21723472,
-,POR-A5,1,,Run3,Porites,Adult,27.8,,21723472,
-,ACR-R8,2,,Run3,Acropora,Recruit,27.8,,21723472,
-,POR-R6,3,,Run3,Porites,Recruit,27.8,,21723472,
-,POC-R7,4,,Run3,Pocillopora,Recruit,27.8,,21723472,
-,ACR-R7,5,,Run3,Acropora,Recruit,27.8,,21723472,
-,ACR-A5,6,,Run3,Acropora,Adult,27.8,,21723472,
-,POR-R8,7,,Run3,Porites,Recruit,27.8,,21723472,
-,POC-A4,8,,Run3,Pocillopora,Adult,27.8,,21723472,
-,ACR-R6,9,,Run3,Acropora,Recruit,27.8,,21723472,
-,BK-5,10,,Run3,Blank,Blank,27.8,,21723472,
-,LOG-3,11,,Run3,logger,logger,27.8,,21723472,
-,POR-R9,12,,Run3,Porites,Recruit,27.8,,21723472,
-,POC-R10,13,,Run3,Pocillopora,Recruit,27.8,,21723472,
-,POR-R5,14,,Run3,Porites,Recruit,27.8,,21723472,
-,POC-R6,15,,Run3,Pocillopora,Recruit,27.8,,21723472,
-,POC-R4,16,,Run3,Pocillopora,Recruit,27.8,,21723472,
-,BK-6,17,,Run3,Blank,Blank,27.8,,21723472,
-,ACR-R9,18,,Run3,Acropora,Recruit,27.8,,21723472,
+20231107,POC-A5,1,P1-1,Run3,Porites,Adult,27.8,195,21723472,"WAS POR-A5, ACTUALLY POC-A5"
+20231107,ACR-R8,2,P1-2,Run3,Acropora,Recruit,27.8,190,21723472,"In two pieces on plug, left unglued "
+20231107,POR-R6,3,P1-3,Run3,Porites,Recruit,27.8,196,21723472,
+20231107,POR-R7,4,P1-4,Run3,Pocillopora,Recruit,27.8,201,21723472,"Was POC-R7, Actually POR-R7"
+20231107,ACR-R7,5,P1-5,Run3,Acropora,Recruit,27.8,198,21723472,
+20231107,ACR-A5,6,P1-6,Run3,Acropora,Adult,27.8,406,21723472,"Too tall for small chamber, put into large chamber with lid pushed down to above coral height "
+20231107,POR-R8,7,P1-7,Run3,Porites,Recruit,27.8,194,21723472,
+20231107,POC-A4,8,P1-8,Run3,Pocillopora,Adult,27.8,193,21723472,
+20231107,ACR-R6,9,P1-9,Run3,Acropora,Recruit,27.8,181,21723472,
+20231107,BK-5,10,P2-1,Run3,Blank,Blank,27.8,198,21723472,
+20231107,LOG-3,11,P2-2,Run3,logger,logger,27.8,NA,21723472,
+20231107,POR-R9,12,P2-3,Run3,Porites,Recruit,27.8,194,21723472,
+20231107,POR-R10,13,P2-4,Run3,Pocillopora,Recruit,27.8,195,21723472,"Was POC-R10, Actually POR-R10 "
+20231107,POR-R5,14,P2-5,Run3,Porites,Recruit,27.8,194,21723472,
+20231107,POC-R6,15,P2-6,Run3,Pocillopora,Recruit,27.8,193,21723472,
+20231107,POC-R4,16,P2-7,Run3,Pocillopora,Recruit,27.8,196,21723472,
+20231107,BK-6,17,P2-8,Run3,Blank,Blank,27.8,190,21723472,
+20231107,ACR-R9,18,P2-9,Run3,Acropora,Recruit,27.8,189,21723472,
