@@ -27,6 +27,8 @@ library(Hmisc)
 library(rTPC)
 library(nls.multstart)
 library(here)
+library(nlraa)
+library(ggplot2)
 
 ## libraries for parallel processing
 library(future)
@@ -37,26 +39,26 @@ library(furrr)
 
 ```{r} 
 #specify data 
-Data<-read_csv(here("output/pi_curves","pi_curve_extracted_rates.csv"))
+Data<-read_csv(here("output/","pi_curve_extracted_rates.csv"))
 
 Data$PAR <- as.numeric(Data$Light_Value.x) 
 Data$Pc <- as.numeric(Data$micromol.cm2.s) 
 
 Data %>% 
-ggplot(aes(x=PAR, y=Pc, color=species, fill=lifestage))+ 
+ggplot(aes(x=PAR, y=Pc, color=Species, fill=Species))+ 
   geom_point() 
 
 raw.plot <- Data %>% 
-ggplot(aes(x=PAR, y=Pc, color=species, group=sample_id, fill=lifestage))+ 
+ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species))+ 
   geom_point()+
   geom_line()+
-  facet_wrap(~ Species*Temp.Cat.x,  ncol = 10)+
+  facet_wrap(~ sample_id,  ncol = 10)+
   theme(legend.position = "none")
 
-ggsave("figures/pi_curves/pi_curve_raw_plots.pdf",raw.plot,  width = 10, height=6)
+ggsave("figures/pi_curve_raw_plots_bycoral.pdf",raw.plot,  width = 10, height=6)
 
 ests <- Data%>%
-  group_by(species, Temp.Cat.x, sample_id)%>%
+  group_by(Species, Temp.Cat.x, sample_id)%>%
   summarise(Rd= min(Pc),
             Pmax = max(Pc))
 
@@ -65,20 +67,20 @@ ests <- Data%>%
     #               11.9, 18.15, 22.2, 25.55, 27.95,  31.8, 34.95, 38.95)
 
 dirty.tpc.plot.Rd <- ests %>% 
-ggplot(aes(x=Temp.Cat.x, y=-Rd, color=species, group=species, fill=lifestage))+ 
+ggplot(aes(x=Temp.Cat.x, y=-Rd, color=Species, group=Species, fill=Species))+ 
   geom_point()+
   #geom_line()+
-  facet_wrap(~ species)+
+  facet_wrap(~ Species)+
   theme(legend.position = "none")
 
 dirty.tpc.plot.Rd  
 
 
 dirty.tpc.plot.Pmax <- ests %>% 
-ggplot(aes(x=Temp.Cat.x, y=Pmax, color=species, group=species, fill=lifestage))+ 
+ggplot(aes(x=Temp.Cat.x, y=Pmax, color=Species, group=Species, fill=Species))+ 
   geom_point()+
   #geom_line()+
-  facet_wrap(~ species)+
+  facet_wrap(~ Species)+
   theme(legend.position = "none")
 
 dirty.tpc.plot.Pmax 
@@ -109,8 +111,6 @@ Using flexible initial values based on input data:
 
 Example
 ```{r}
-require(ggplot2)
-library(nlraa)
 set.seed(1234)
 
 Data$PAR <- as.numeric(Data$Light_Value.x) 
@@ -214,7 +214,7 @@ df <- df %>%
 # Facet grid for each variable 
 jpeg("output/pi_curves/PI_metrics_nls.jpg") 
 PI.params <- df %>% 
-  ggplot(aes(x = species, y = value,fill=species)) + 
+  ggplot(aes(x = Species, y = value,fill=Species)) + 
   geom_boxplot(alpha = 0.6) + 
   scale_fill_manual(values=c("green", "cyan", "black", "orange"))+ 
   facet_wrap(~variable*Temp.Cat, scales = "free_y", nrow=4) + 
@@ -241,7 +241,7 @@ df$Rd.log10 <-log10(df$Rd+1)
 df$Ik.log10 <-log10(df$Ik+1) 
 
 # add a group name by pasting Temperature and Treatment 
-df$group <- paste0(df$species,"_", df$Temp.Cat) 
+df$group <- paste0(df$Species,"_", df$Temp.Cat) 
 df$id_group <- paste0(df$sample_id,"_", df$Temp.Cat) 
 
 df <- df %>% 
@@ -252,8 +252,8 @@ Visualize data
 ```{r, warning=FALSE, message=FALSE} 
 # Visualize data 
 r_plot<-df %>% 
-    ggplot(., aes(x = Temp.Cat, y = value, colour=species)) + 
-    geom_point(aes(fill=species, group=species), pch = 21, size=2, alpha=0.5) +  
+    ggplot(., aes(x = Temp.Cat, y = value, colour=Species)) + 
+    geom_point(aes(fill=Species, group=Species), pch = 21, size=2, alpha=0.5) +  
     xlab("Temperature") +  
     facet_wrap(vars(variable), scales = "free_y", nrow = 2, strip.position = "top") + 
     theme_classic() +  
@@ -276,13 +276,13 @@ ggsave("output/pi_curves/Pmax_outliersbygroup.pdf", outlier.plot, dpi=300, w=16,
 #  
 # # calculate quantile values by Temperature and Treatment groups 
 # Quants <- df %>% 
-#   group_by(species, Temp.Cat) %>% 
+#   group_by(Species, Temp.Cat) %>% 
 #   summarize(quant25 = quantile(AQY.log10, probs = q[1]), 
 #             quant75 = quantile(AQY.log10, probs = q[2]), 
 #             IQRbyGroup=IQR(AQY.log10)) 
 #  
 # # add a group name by pasting Temperature and Treatment 
-# Quants$group <-paste0(Quants$species,"_", Quants$Temp.Cat) 
+# Quants$group <-paste0(Quants$Species,"_", Quants$Temp.Cat) 
 #  
 # #Calculate Quantile upper and lower ranges  
 # Quants$upper <-  Quants$quant75+1.5*Quants$IQRbyGroup # Upper Range   
@@ -299,8 +299,8 @@ ggsave("output/pi_curves/Pmax_outliersbygroup.pdf", outlier.plot, dpi=300, w=16,
 #  
 # # Visualize data following outlier removal 
 # r_plot<-df %>% 
-#     ggplot(., aes(x = Temp.Cat, y = AQY.log10, colour=species)) + 
-#     geom_point(aes(fill=species, group=species), pch = 21, size=2, alpha=0.5) +  
+#     ggplot(., aes(x = Temp.Cat, y = AQY.log10, colour=Species)) + 
+#     geom_point(aes(fill=Species, group=Species), pch = 21, size=2, alpha=0.5) +  
 #     xlab("Temperature") +  
 #     #scale_fill_manual(name="Treatment", values=c("#3450A3","#E9A33D"))+ 
 #     #scale_color_manual(name="Treatment", values=c("#3450A3","#E9A33D"))+ 
@@ -350,7 +350,7 @@ upper_lims
 Dlab CURVE FIT 
 ```{r} 
 Dlab.df <- df %>%  
-  filter(species=="Diploria labyrinthiformis") %>%  
+  filter(Species=="Diploria labyrinthiformis") %>%  
   filter(!id_group=="Dlab-F6_26") 
 
 #fit  
@@ -425,7 +425,7 @@ Dlab.CI.plot
 Mdec CURVE FIT 
 ```{r} 
 Mdec.df <- df %>%  
-  filter(species=="Madracis decactis") %>% 
+  filter(Species=="Madracis decactis") %>% 
   filter(!id_group=="Mdec-B6_26") %>% filter(!id_group=="Mdec-D7_36") 
 
 #fit  
@@ -500,7 +500,7 @@ Mdec.CI.plot
 Mcav CURVE FIT 
 ```{r} 
 Mcav.df <- df %>%  
-  filter(species=="Montastraea cavernosa")%>% 
+  filter(Species=="Montastraea cavernosa")%>% 
   filter(!id_group=="Mcav-D7_36") 
 
 #fit  
@@ -576,7 +576,7 @@ Mcav.CI.plot
 Past CURVE FIT 
 ```{r} 
 Past.df <- df %>%  
-  filter(species=="Porites astreoides") %>% 
+  filter(Species=="Porites astreoides") %>% 
   filter(!id_group=="Past-C6_26") %>% 
   filter(!id_group=="Past-E7_36") 
 
