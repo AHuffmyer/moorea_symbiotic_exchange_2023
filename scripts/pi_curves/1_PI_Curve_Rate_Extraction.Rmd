@@ -1,6 +1,8 @@
 ---
 title: "Oxygen flux rate extractions"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include = FALSE}
@@ -34,17 +36,17 @@ library(furrr)
 
 ## Import metadata
 ```{r, warning = FALSE}
-path.p <- "data/pi_curves/runs/" #the location of all your respirometry files 
+path.p <- "data/pi_curves/test/" #the location of all your respirometry files 
 
 # List data files
 file.names <- list.files(path = path.p, pattern = "csv$")  # list all csv file names in the folder
-#file.names <- file.names[!grepl("metadata", file.names)]   # omit metadata from files to be read in as data
+file.names <- file.names[!grepl("metadata", file.names)]   # omit metadata from files to be read in as data
 
 # Load PI curve sample metadata (i.e., which corals were in which runs)
 sample.info <- read_csv(file = "data/pi_curves/pi_curves_sample_metadata.csv")
 
 # Load PI curve run metadata (i.e., light levels and interval times for each run)
-run.info <- read_csv(file = "data/pi_curves/pi_curves_run_metadata.csv")
+run.info <- read_csv(file = "data/pi_curves/pi_curves_run_metadata_TEST.csv")
 
 # Join all coral and run metadata
 metadata <- full_join(sample.info, run.info) %>%
@@ -52,9 +54,8 @@ metadata <- full_join(sample.info, run.info) %>%
 
 # Select only certain columns
 metadata <- metadata %>%
-  select(Species, sample_id, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
+  select(sample_id, Species, Lifestage, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
 ```
-
 
 # Read in all data files
 ```{r, results="hide", message=FALSE}
@@ -66,21 +67,61 @@ df <- tibble(file.name = file.names) %>%
 
 # Select only Time, Value, and Temp columns from O2 data
 df <- df %>%
-  mutate(data0 = map(data0, ~select(., Time, Value, Temp)))%>%
-  mutate(data0 = map(data0, ~(.x %>% filter(complete.cases(.))))) #remove NAs 
+  dplyr::mutate(data0 = map(data0, ~select(., Time, Value, Temp)))%>%
+  dplyr::mutate(data0 = map(data0, ~(.x %>% filter(complete.cases(.))))) #remove NAs 
 
 ```
 
 ## Use the time breaks in the sample info to link O2 data with light levels
+
+ORIGINAL
 ```{r, warning = FALSE}
 #Use start time of each light step from the metadata to separate data by light stop
 df <- df %>%
   mutate(intervals = map2(data0, info, function(.x, .y) {
     split(.x, f = cut(as.numeric(.x$Time), breaks = as.numeric(c(.y$Start.time, last(.y$Stop.time))),
                       labels = as.character(.y$Light_Value)))})) %>%
-  mutate(data = map(intervals, ~ unnest(tibble(.), .id = "Light_Value")))
-
+  mutate(data = map(intervals, ~ unnest(tibble(.), .id =  = "Light_Value")))
 ```
+
+NEW TESTING 
+```{r}
+df <- df %>%
+  mutate(intervals = map2(data0, info, function(.x, .y) {
+    split(.x, f = cut(as.numeric(.x$Time), breaks = as.numeric(c(.y$Start.time, last(.y$Stop.time))),
+                      labels = as.character(.y$Light_Value)))})) %>%
+  mutate(data = map(intervals, ~ unnest_wider(.x, names_sep = "_", values_fn = list)))
+```
+
+
+ANOTHER TEST, DOESN'T WORK
+```{r}
+#this is stopping at the next start time, not the appropriate stop time 
+
+df <- df %>%
+  mutate(intervals = map2(data0, info, function(.x, .y) {
+    breaks <- c(.y$Start.time, .y$Stop.time)
+    labels <- as.character(.y$Light_Value)
+    
+    # Ensure that labels have the same length as breaks
+    if (length(labels) < length(breaks)) {
+      labels <- rep(labels, length.out = length(breaks))
+    }
+    
+    # Create a new column for Light_Value based on the intervals
+    .x$Light_Value <- cut(as.numeric(.x$Time), breaks = as.numeric(breaks), labels = labels)
+    return(.x)
+  })) %>%
+  
+  unnest(intervals) %>%
+  select(-intervals)
+ 
+```
+
+
+
+
+
 
 ### Thin data
 ```{r, fig.height = 8, fig.width = 8}
@@ -89,7 +130,7 @@ thin_par <- 20
 
 # Thin data for all samples
 df <- df %>%
-  mutate(thin_data = map(data, ~ slice(., seq(1, nrow(.), thin_par))))
+  dplyr::mutate(thin_data = map(data, ~ slice(., seq(1, nrow(.), thin_par))))
 
 # Create plots for full dataset and thinned data
 df <- df %>%
