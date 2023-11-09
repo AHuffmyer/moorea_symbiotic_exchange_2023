@@ -52,7 +52,7 @@ metadata <- full_join(sample.info, run.info) %>%
 
 # Select only certain columns
 metadata <- metadata %>%
-  select(Species, sample_id, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
+  select(Species, Lifestage, sample_id, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
 ```
 
 
@@ -201,7 +201,7 @@ xxx <- xx %>%
   summarise(light_steps = n())
 
 #select only the essential columns
-mx <- select(metadata, Species, sample_id, Run, Chamber.Vol.L, Temp.Cat)
+mx <- select(metadata, Species, Lifestage, sample_id, Run, Chamber.Vol.L, Temp.Cat)
 nrow(mx)
 nrow(distinct(df))
 
@@ -281,7 +281,7 @@ length(unique(pr$sample_id))
 ```{r}
 # Select variables to write to file
 pr.out <- pr %>% 
-  select(Species, sample_id, Light_Value.x, Temp.Cat.x, Run, micromol.cm2.s, micromol.cm2.h)
+  select(Species, Lifestage, sample_id, Light_Value.x, Temp.Cat.x, Run, micromol.cm2.s, micromol.cm2.h)
 length(unique(pr.out$sample_id))
 
 # Write to output file

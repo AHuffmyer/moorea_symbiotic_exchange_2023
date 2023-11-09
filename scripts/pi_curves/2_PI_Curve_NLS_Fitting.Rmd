@@ -1,6 +1,8 @@
 ---
 title: "Oxygen flux rate extractions "
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include = FALSE}
@@ -43,7 +45,9 @@ Data<-read_csv(here("output/","pi_curve_extracted_rates.csv"))
 
 Data$PAR <- as.numeric(Data$Light_Value.x) 
 Data$Pc <- as.numeric(Data$micromol.cm2.s) 
+```
 
+```{r}
 Data %>% 
 ggplot(aes(x=PAR, y=Pc, color=Species, fill=Species))+ 
   geom_point() 
@@ -55,10 +59,28 @@ ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species))+
   facet_wrap(~ sample_id,  ncol = 10)+
   theme(legend.position = "none")
 
-ggsave("figures/pi_curve_raw_plots_bycoral.pdf",raw.plot,  width = 10, height=6)
+ggsave("figures/pi_curves/pi_curve_raw_plots_bycoral.pdf",raw.plot,  width = 10, height=6)
+
+raw.plot.2 <- Data %>% 
+ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species))+ 
+  geom_point()+
+  geom_line()+
+  facet_wrap(~ Species * Lifestage,  ncol = 2)+
+  theme(legend.position = "none")
+
+ggsave("figures/pi_curves/pi_curve_raw_plots_groups.pdf",raw.plot.2,  width = 10, height=6)
+
+raw.plot.3 <- Data %>% 
+ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species, linetype=Lifestage))+ 
+  geom_point()+
+  geom_line()+
+  facet_wrap(~ Species,  ncol = 3)+
+  theme(legend.position = "none")
+
+ggsave("figures/pi_curves/pi_curve_raw_plots_species.pdf",raw.plot.3,  width = 10, height=6)
 
 ests <- Data%>%
-  group_by(Species, Temp.Cat.x, sample_id)%>%
+  group_by(Species, Lifestage, Temp.Cat.x, sample_id)%>%
   summarise(Rd= min(Pc),
             Pmax = max(Pc))
 
@@ -67,27 +89,26 @@ ests <- Data%>%
     #               11.9, 18.15, 22.2, 25.55, 27.95,  31.8, 34.95, 38.95)
 
 dirty.tpc.plot.Rd <- ests %>% 
-ggplot(aes(x=Temp.Cat.x, y=-Rd, color=Species, group=Species, fill=Species))+ 
+ggplot(aes(x=Temp.Cat.x, y=-Rd, color=Species, group=Species, fill=Species, shape=Lifestage))+ 
   geom_point()+
   #geom_line()+
-  facet_wrap(~ Species)+
-  theme(legend.position = "none")
+  facet_wrap(~ Species * Lifestage, ncol=2)+
+  theme_classic()+
+  theme(legend.position = "none"); dirty.tpc.plot.Rd  
 
-dirty.tpc.plot.Rd  
-
+ggsave("figures/pi_curves/rd_dirty_estimates.pdf",dirty.tpc.plot.Rd,  width = 10, height=6)
 
 dirty.tpc.plot.Pmax <- ests %>% 
-ggplot(aes(x=Temp.Cat.x, y=Pmax, color=Species, group=Species, fill=Species))+ 
+ggplot(aes(x=Temp.Cat.x, y=Pmax, color=Species, group=Species, fill=Species, shape=Lifestage))+ 
   geom_point()+
   #geom_line()+
-  facet_wrap(~ Species)+
-  theme(legend.position = "none")
+  facet_wrap(~ Species * Lifestage, ncol=2)+
+  theme(legend.position = "none")+
+  theme_classic(); dirty.tpc.plot.Pmax 
 
-dirty.tpc.plot.Pmax 
+ggsave("figures/pi_curves/pmax_dirty_estimates.pdf",dirty.tpc.plot.Pmax,  width = 10, height=6)
 
 ``` 
-
-
 
 # PI Curves 
 
@@ -124,43 +145,44 @@ fit <- nls(y ~ SSnrh(x, asym, phi, theta, rd), data = dat)
 ggplot(data = dat, aes(x = x, y = y)) + 
   geom_point() + 
   geom_line(aes(y = fitted(fit)))
+
 ## Testing predict function
 prd <- predict_nls(fit, interval = "confidence")
 datA <- cbind(dat, prd)
+
 ## Plotting
 ggplot(data = datA, aes(x = x, y = y)) + 
   geom_point() + 
   geom_line(aes(y = fitted(fit))) + 
   geom_ribbon(aes(ymin = Q2.5, ymax = Q97.5), 
   fill = "purple", alpha = 0.3)
-
-
 ```
 
 
 ```{r} 
 nls_data <- Data %>%  
-  #filter(Species== "Porites compressa") %>%
-   group_by(sample_id) %>% 
-   nest(-sample_id) %>% 
-   mutate(model1 = map(data, ~  
-                         #nls(Pc ~ (Am*((AQY*PAR)/(sqrt(Am^2 + (AQY*PAR)^2)))-Rd), data=., start=list(Am=1,  AQY=0.001, Rd=-2)) 
-                         nls(Pc ~ SSnrh(PAR, asym, phi, theta, rd), data = Data)%>% 
+  filter(sample_id %in% c("ACR-A1", "ACR-A2", "ACR-A3", "ACR-A4"))%>%
+  nest(.by = sample_id)%>%
+  
+  #not mapping to individual currently 
+  mutate(model1 = map(data, ~  
+                        # nls(Pc ~ (Am*((AQY*PAR)/(sqrt(Am^2 + (AQY*PAR)^2)))-Rd), data=., start=list(Am=1,  AQY=0.001, Rd=-2)) 
+                         nls(Pc ~ SSnrh(PAR, asym, phi, theta, rd), data = .)%>% 
 #asym=asymptote, 
 #phi=quantum efficiency, 
 #theta = curvature 
 #rd= dark respiration                  
                               tidy %>% 
                               dplyr::select(term, estimate) %>%  
-                              spread(term, estimate))) %>% 
+                              spread(term, estimate))) #%>% 
   unnest(model1) %>% 
   unnest(data) %>% 
   #group_by(sample_id) %>% 
-  summarise(Am=mean(asym), AQY=mean(phi), theta= mean(theta), Rd=mean(rd))%>% 
+  summarise(Am=mean(asym), AQY=mean(phi), theta=mean(theta), Rd=mean(rd))%>% 
   mutate(Ik=Am/AQY)%>% 
   mutate(Ic=(Am*Rd)/(AQY*(sqrt(Am^2-Rd^2)))) 
 
-  write_csv(nls_data, "output/pi_curves/pi_curve_pars_nls.csv") 
+write_csv(nls_data, "output/pi_curves/pi_curve_pars_nls.csv") 
 ``` 
 
 
