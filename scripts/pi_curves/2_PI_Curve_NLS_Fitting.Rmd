@@ -280,7 +280,7 @@ AH LEFT OFF HERE
 Load rate data and metadata 
 ```{r, warning=FALSE, message=FALSE} 
 pars <- read_csv("output/pi_curves/pi_curve_pars_nls.csv") 
-md <- read_csv("data/pi_curves/pi_curves_coral_metadata.csv") 
+md <- read_csv("data/pi_curves/pi_curves_sample_metadata.csv") 
 df <- left_join(pars, md) 
 
 df$Am.log10 <-log10(df$Am+1) 
@@ -289,7 +289,7 @@ df$Rd.log10 <-log10(df$Rd+1)
 df$Ik.log10 <-log10(df$Ik+1) 
 
 # add a group name by pasting Temperature and Treatment 
-df$group <- paste0(df$Species,"_", df$Temp.Cat) 
+df$group <- paste0(df$Species,"_", df$Lifestage, "_", df$Temp.Cat) 
 df$id_group <- paste0(df$sample_id,"_", df$Temp.Cat) 
 
 df <- df %>% 
