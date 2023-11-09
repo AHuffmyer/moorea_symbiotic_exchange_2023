@@ -158,15 +158,33 @@ ggplot(data = datA, aes(x = x, y = y)) +
   fill = "purple", alpha = 0.3)
 ```
 
+Problem corals that don't fit model: 
+ACR-A4 - flat on upper part of light levels
+POC-A5 - doesn't level off? 
+POR-A5 - flat ish curve
+ACR-R6 - flat curve
+ACR-R8 - not sure on this one
+ACR-R9 - spike in lower levels of light
+POC-R3 - maybe weird curve
+POC-R4 - doesn't flatten out
+POC-R6 - doesn't flatten out
+POC-R9 - weird curve maybe
+POC-R10 - peak in lower light
+POR-R4 - weird curve maybe
+POR-R5 - doesn't reach flattened part of curve
+POR-R6 - doesn't flatten out 
+POR-R7 - doesn't flatten out
+POR-R9 - doesn't flatten out 
+POR-R10 - doesn't flatten out 
 
+Run without these
 ```{r} 
 nls_data <- Data %>%  
-  filter(sample_id %in% c("ACR-A1", "ACR-A2", "ACR-A3", "ACR-A4"))%>%
-  nest(.by = sample_id)%>%
+  filter(sample_id %in% c("ACR-A1", "ACR-A2", "ACR-A3", "ACR-A5", "POC-A1", "POC-A2", "POC-A3", "POC-A4", "POR-A1", "POR-A2", "POR-A3", "POR-A4", "ACR-R1", "ACR-R2", "ACR-R3", "ACR-R4", "ACR-R5", "ACR-R7", "ACR-R10", "POC-R1", "POC-R2","POC-R5", "POC-R7", "POC-R8", "POR-R1", "POR-R2", "POR-R3", "POR-R8"))%>%
   
-  #not mapping to individual currently 
+  nest(.by = sample_id)%>%
   mutate(model1 = map(data, ~  
-                        # nls(Pc ~ (Am*((AQY*PAR)/(sqrt(Am^2 + (AQY*PAR)^2)))-Rd), data=., start=list(Am=1,  AQY=0.001, Rd=-2)) 
+                        #nls(Pc ~ (Am*((AQY*PAR)/(sqrt(Am^2 + (AQY*PAR)^2)))-Rd), data=., start=list(Am=0.001,  AQY=0.001, Rd=-0.05)) %>%
                          nls(Pc ~ SSnrh(PAR, asym, phi, theta, rd), data = .)%>% 
 #asym=asymptote, 
 #phi=quantum efficiency, 
@@ -174,10 +192,10 @@ nls_data <- Data %>%
 #rd= dark respiration                  
                               tidy %>% 
                               dplyr::select(term, estimate) %>%  
-                              spread(term, estimate))) #%>% 
+                              spread(term, estimate))) %>% 
   unnest(model1) %>% 
-  unnest(data) %>% 
-  #group_by(sample_id) %>% 
+  unnest(c(data)) %>% 
+  group_by(sample_id) %>% 
   summarise(Am=mean(asym), AQY=mean(phi), theta=mean(theta), Rd=mean(rd))%>% 
   mutate(Ik=Am/AQY)%>% 
   mutate(Ic=(Am*Rd)/(AQY*(sqrt(Am^2-Rd^2)))) 
@@ -186,10 +204,10 @@ write_csv(nls_data, "output/pi_curves/pi_curve_pars_nls.csv")
 ``` 
 
 
-Plot curve over data points.   
+Plot curve over data points. NOT WORKING   
 ```{r} 
 augmented <- Data %>%  
-  nest(-sample_id) %>%  
+  nest(.by = sample_id)%>%  
   mutate( 
     fit = map(data, ~ nls(Pc ~ (Am*((AQY*PAR)/(sqrt(Am^2 + (AQY*PAR)^2)))-Rd), data=., start=list(Am=0.7,  AQY=0.001, Rd=.4))), 
     augmented = map(fit, augment), 
@@ -227,28 +245,36 @@ by(augmented,augmented$sample_id, function(i) {
 PI curve fitted parameters for each individual 
 ```{r} 
 pars <- nls_data 
-md <- read_csv("data/pi_curves/pi_curves_coral_metadata.csv") 
+md <- read_csv("data/pi_curves/pi_curves_sample_metadata.csv") %>% select(sample_id, Species, Lifestage)
 df <- left_join(pars, md) 
 
 df <- df %>% 
   pivot_longer(cols=Am:Ik, names_to="variable") 
 
 # Facet grid for each variable 
-jpeg("output/pi_curves/PI_metrics_nls.jpg") 
 PI.params <- df %>% 
-  ggplot(aes(x = Species, y = value,fill=Species)) + 
-  geom_boxplot(alpha = 0.6) + 
-  scale_fill_manual(values=c("green", "cyan", "black", "orange"))+ 
-  facet_wrap(~variable*Temp.Cat, scales = "free_y", nrow=4) + 
-  geom_jitter(width = 0.1)+ 
+  filter(value>-5)%>% #remove outlier
+  ggplot(aes(x = Species, y = value, colour=Lifestage)) + 
+  facet_wrap(~variable, scales="free_y")+
+  geom_point(position=position_jitterdodge(0.1))+
+  scale_colour_manual(values=c("black", "orange"))+ 
   theme_classic()+ 
-  theme(legend.position="none")+ 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+ 
-  #scale_x_discrete(labels=c("Diploria labyrinthiformis" = "Dlab", "Madracis decactis" = "Mdec", 
-                              "Montastraea cavernosa" = "Mcav", "Porites astreoides" = "Past")) 
-PI.params 
-dev.off() 
+  theme(legend.position="right")+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1));PI.params 
+
+ggsave("figures/pi_curves/PI_parameters.jpeg", PI.params, dpi=300, w=8, h=8, units="in") 
 ``` 
+
+
+
+
+AH LEFT OFF HERE 
+
+
+
+
+
+
 
 
 Load rate data and metadata 
