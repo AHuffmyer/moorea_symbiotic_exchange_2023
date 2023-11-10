@@ -1,5 +1,5 @@
 ---
-title: "Oxygen flux rate extractions"
+title: "Oxygen flux rate extractions "
 output: html_document
 ---
 
@@ -34,25 +34,25 @@ library(furrr)
 
 ## Import metadata
 ```{r, warning = FALSE}
-path.p <- "data/p_r_rates/runs/" #the location of all your respirometry files 
+path.p <- "data/p_r_rates/runs" #the location of all your respirometry files 
 
 # List data files
 file.names <- list.files(path = path.p, pattern = "csv$")  # list all csv file names in the folder
-#file.names <- file.names[!grepl("metadata", file.names)]   # omit metadata from files to be read in as data
+file.names <- file.names[!grepl("metadata", file.names)]   # omit metadata from files to be read in as data
 
 # Load PI curve sample metadata (i.e., which corals were in which runs)
-sample.info <- read_csv(file = "data/p_r_rates/pi_curves_sample_metadata.csv")
+sample.info <- read_csv(file = "data/p_r_rates/pr_sample_metadata.csv")
 
 # Load PI curve run metadata (i.e., light levels and interval times for each run)
-run.info <- read_csv(file = "data/p_r_rates/pi_curves_run_metadata.csv")
+run.info <- read_csv(file = "data/pi_curves/pi_curves_run_metadata.csv")
 
 # Join all coral and run metadata
 metadata <- full_join(sample.info, run.info) %>%
-  mutate(Date = as_date(as.character(Date), format = "%Y%m%d", tz = "Pacific/Tahiti"))
+  mutate(Date = as_date(as.character(Date), format = "%Y%m%d", tz = "Tahiti"))
 
 # Select only certain columns
 metadata <- metadata %>%
-  select(Species, sample_id, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
+  select(Species, Lifestage, sample_id, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
 ```
 
 
@@ -62,7 +62,7 @@ metadata <- metadata %>%
 df <- tibble(file.name = file.names) %>%
   mutate(sample_id = gsub("_.*", "", file.name),                              # Get sample_id from filename
           info = map(sample_id, ~filter(metadata, sample_id == .)),           # Get associated sample info
-         data0 = map(file.name, ~read_csv(file.path(path.p, .), skip=1, col_types = cols(.default = "d", Time = "t"))))   # Get associated O2 data
+         data0 = map(file.name, ~read_csv(file.path(path.p, .), skip=1, col_types = cols(.default = "d", Time = "t"), col_select = c(Time, Value, Temp))))   # Get associated O2 data
 
 # Select only Time, Value, and Temp columns from O2 data
 df <- df %>%
@@ -194,8 +194,14 @@ xx$grouping.id <- paste0(xx$sample_id, "-",xx$Light_Value)
 nrow(xx)
 nrow(distinct(xx))
 
+#Check to see if all samples have the expected number of light steps
+unique(xx[[4]])
+xxx <- xx %>%
+  group_by(sample_id) %>%
+  summarise(light_steps = n())
+
 #select only the essential columns
-mx <- select(metadata, Species, sample_id, Run, Chamber.Vol.L, Temp.Cat)
+mx <- select(metadata, Species, Lifestage, sample_id, Run, Chamber.Vol.L, Temp.Cat)
 nrow(mx)
 nrow(distinct(df))
 
@@ -206,7 +212,7 @@ nrow(distinct(pr))
 pr <-distinct(pr)
   
 # Write raw data to output file
-write.csv(pr, "output/p_r_rates/pr_extracted_rates_Raw.csv")
+write.csv(pr, "output/pi_curve_extracted_rates_Raw.csv")
 ```
 
 
@@ -251,7 +257,7 @@ pr <- pr %>%
 length(unique(pr$sample_id))
 
 # Import surface area data
-sa <- read.csv("output/physiology/surface_area.csv")
+sa <- read.csv("output/physiology/surface_area/surface_area.csv")
 
 # Join surface area with rest of data
 pr <- left_join(pr, select(sa, sample_id, surface.area.cm2))
@@ -275,9 +281,9 @@ length(unique(pr$sample_id))
 ```{r}
 # Select variables to write to file
 pr.out <- pr %>% 
-  select(Species, sample_id, Light_Value.x, Temp.Cat.x, Run, micromol.cm2.s, micromol.cm2.h)
+  select(Species, Lifestage, sample_id, Light_Value.x, Temp.Cat.x, Run, micromol.cm2.s, micromol.cm2.h)
 length(unique(pr.out$sample_id))
 
 # Write to output file
-write.csv(pr.out, "output/p_r_rates/pr_extracted_rates.csv")
+write.csv(pr.out, "output/pi_curve_extracted_rates.csv")
 ```
