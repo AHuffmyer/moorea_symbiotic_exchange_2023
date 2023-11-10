@@ -90,7 +90,7 @@ Plot by tank colored by tank.
 ```{r}
 daily_tanks<-daily_calc.long %>%
   ggplot(aes(x=date, y=value, colour=tank))+
-  geom_point(size=2)+
+  geom_point(size=2, position=position_dodge(0.3))+
   #geom_vline(xintercept = as.numeric(ymd("2022-10-19")), linetype="dashed", 
                 #color = "black", size=0.5)+
   #geom_vline(xintercept = as.numeric(ymd("2022-10-24")), linetype="solid", 
@@ -98,7 +98,7 @@ daily_tanks<-daily_calc.long %>%
   #scale_colour_manual(values=c("orange", "brown4"))+
   xlab("Date")+
   facet_grid(metric ~ ., scales = "free")+
-  theme_bw(); daily_tanks
+  theme_classic(); daily_tanks
   
 ggsave(filename="figures/environmental/tank_daily_measurements.png", plot=daily_tanks, dpi=300, width=6, height=8, units="in")
 
