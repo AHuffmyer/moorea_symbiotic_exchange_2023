@@ -34,7 +34,7 @@ library(furrr)
 
 ## Import metadata
 ```{r, warning = FALSE}
-path.p <- "data/p_r_rates/runs/Run3" #the location of all your respirometry files 
+path.p <- "data/p_r_rates/runs" #the location of all your respirometry files 
 
 # List data files
 file.names <- list.files(path = path.p, pattern = "csv$")  # list all csv file names in the folder
