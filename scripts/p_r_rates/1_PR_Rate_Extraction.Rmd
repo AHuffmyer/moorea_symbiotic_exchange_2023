@@ -34,7 +34,7 @@ library(furrr)
 
 ## Import metadata
 ```{r, warning = FALSE}
-path.p <- "data/p_r_rates/runs" #the location of all your respirometry files 
+path.p <- "data/p_r_rates/runs/Run3" #the location of all your respirometry files 
 
 # List data files
 file.names <- list.files(path = path.p, pattern = "csv$")  # list all csv file names in the folder
@@ -44,11 +44,12 @@ file.names <- file.names[!grepl("metadata", file.names)]   # omit metadata from 
 sample.info <- read_csv(file = "data/p_r_rates/pr_sample_metadata.csv")
 
 # Load PI curve run metadata (i.e., light levels and interval times for each run)
-run.info <- read_csv(file = "data/pi_curves/pi_curves_run_metadata.csv")
+run.info <- read_csv(file = "data/p_r_rates/pr_run_metadata.csv")
 
 # Join all coral and run metadata
 metadata <- full_join(sample.info, run.info) %>%
   mutate(Date = as_date(as.character(Date), format = "%Y%m%d", tz = "Tahiti"))
+metadata <- metadata %>% filter(!Light_Level==3)
 
 # Select only certain columns
 metadata <- metadata %>%
@@ -104,7 +105,7 @@ df <- df %>%
 
 # Example of plots
 cowplot::plot_grid(df$data_plot[[1]], df$thin_data_plot[[1]], nrow = 2,
-                   labels = c("Example plot: all data", "Example plot: thinned data"))
+                   labels = c("         Example plot: all data", "      Example plot: thinned data"))
 ```
 
 #### The full or thinned data plot for any sample can be accessed like this:
