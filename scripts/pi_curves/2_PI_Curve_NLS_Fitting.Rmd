@@ -360,3 +360,4 @@ model1<-df%>%
 
 summary(model1)
 ```
+
