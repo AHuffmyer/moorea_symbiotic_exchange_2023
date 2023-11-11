@@ -1,6 +1,8 @@
 ---
 title: "Oxygen flux rate extractions "
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include = FALSE}
@@ -213,7 +215,7 @@ nrow(distinct(pr))
 pr <-distinct(pr)
   
 # Write raw data to output file
-write.csv(pr, "output/pi_curve_extracted_rates_Raw.csv")
+write.csv(pr, "output/p_r_rates/pr_curve_extracted_rates_Raw.csv")
 ```
 
 
@@ -286,7 +288,7 @@ pr.out <- pr %>%
 length(unique(pr.out$sample_id))
 
 # Write to output file
-write.csv(pr.out, "output/pi_curve_extracted_rates.csv")
+write.csv(pr.out, "output/p_r_rates/pr_curve_extracted_rates.csv")
 ```
 
 Visualize LEDR
@@ -294,13 +296,14 @@ Visualize LEDR
 #plot  values
 LEDR <- pr.out %>% filter(Light_Value.x==0)
   
-LEDR %>% ggplot(aes(x=as.numeric(Temp.Cat.x), y=micromol.cm2.h, colour = Species))+
-  geom_point()+
-  facet_wrap(vars(Species, Lifestage), nrow=3)+
+ledr_plot<-LEDR %>% ggplot(aes(x=as.factor(Temp.Cat.x), y=micromol.cm2.h, colour = Lifestage))+
+  geom_point(position=position_dodge(0.5))+
+  facet_wrap(vars(Species), nrow=3)+
   labs(x = "Temp °C")+
-  labs(y = "Rdark (micromol.cm2.h)")
+  labs(y = "Rdark (micromol.cm2.h)")+
+  theme_classic();ledr_plot
 
-ggsave("output/Rdark.pdf", width = 4, height = 4)
+ggsave("figures/p_r_rates/Rdark.pdf", ledr_plot, width = 4, height = 4)
 ```
 
 
@@ -309,12 +312,13 @@ Visualize Pmax
 #plot  values
 Pmax <- pr.out %>% filter(Light_Value.x==550)
   
-Pmax %>% ggplot(aes(x=as.numeric(Temp.Cat.x), y=micromol.cm2.h, colour = Species))+
-  geom_point()+
-  facet_wrap(vars(Species, Lifestage), nrow=3)+
+pmax_plot<-Pmax %>% ggplot(aes(x=as.factor(Temp.Cat.x), y=micromol.cm2.h, colour = Lifestage))+
+  geom_point(position=position_dodge(0.3))+
+  facet_wrap(vars(Species), nrow=3)+
   labs(x = "Temp °C")+
-  labs(y = "Pmax (micromol.cm2.h)")
+  labs(y = "Pmax (micromol.cm2.h)")+
+  theme_classic(); pmax_plot
 
-ggsave("output/Pmax.pdf", width = 4, height = 4)
+ggsave("figures/p_r_rates/Pmax.pdf", pmax_plot, width = 4, height = 4)
 
 ```
