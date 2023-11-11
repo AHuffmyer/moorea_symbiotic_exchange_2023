@@ -288,3 +288,33 @@ length(unique(pr.out$sample_id))
 # Write to output file
 write.csv(pr.out, "output/pi_curve_extracted_rates.csv")
 ```
+
+Visualize LEDR
+```{r}
+#plot  values
+LEDR <- pr.out %>% filter(Light_Value.x==0)
+  
+LEDR %>% ggplot(aes(x=as.numeric(Temp.Cat.x), y=micromol.cm2.h, colour = Species))+
+  geom_point()+
+  facet_wrap(vars(Species, Lifestage), nrow=3)+
+  labs(x = "Temp °C")+
+  labs(y = "Rdark (micromol.cm2.h)")
+
+ggsave("output/Rdark.pdf", width = 4, height = 4)
+```
+
+
+Visualize Pmax
+```{r}
+#plot  values
+Pmax <- pr.out %>% filter(Light_Value.x==550)
+  
+Pmax %>% ggplot(aes(x=as.numeric(Temp.Cat.x), y=micromol.cm2.h, colour = Species))+
+  geom_point()+
+  facet_wrap(vars(Species, Lifestage), nrow=3)+
+  labs(x = "Temp °C")+
+  labs(y = "Pmax (micromol.cm2.h)")
+
+ggsave("output/Pmax.pdf", width = 4, height = 4)
+
+```
