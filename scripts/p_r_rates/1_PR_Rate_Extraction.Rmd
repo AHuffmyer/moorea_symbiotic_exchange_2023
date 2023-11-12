@@ -298,12 +298,12 @@ LEDR <- pr.out %>% filter(Light_Value.x==0)
   
 ledr_plot<-LEDR %>% ggplot(aes(x=as.factor(Temp.Cat.x), y=micromol.cm2.h, colour = Lifestage))+
   geom_point(position=position_dodge(0.5))+
-  facet_wrap(vars(Species), nrow=3)+
+  facet_wrap(~Species, nrow=1)+
   labs(x = "Temp °C")+
   labs(y = "Rdark (micromol.cm2.h)")+
   theme_classic();ledr_plot
 
-ggsave("figures/p_r_rates/Rdark.pdf", ledr_plot, width = 4, height = 4)
+ggsave("figures/p_r_rates/Rdark.pdf", ledr_plot, width = 8, height = 4)
 ```
 
 
@@ -314,11 +314,11 @@ Pmax <- pr.out %>% filter(Light_Value.x==550)
   
 pmax_plot<-Pmax %>% ggplot(aes(x=as.factor(Temp.Cat.x), y=micromol.cm2.h, colour = Lifestage))+
   geom_point(position=position_dodge(0.3))+
-  facet_wrap(vars(Species), nrow=3)+
+  facet_wrap(~Species, nrow=1)+
   labs(x = "Temp °C")+
   labs(y = "Pmax (micromol.cm2.h)")+
   theme_classic(); pmax_plot
 
-ggsave("figures/p_r_rates/Pmax.pdf", pmax_plot, width = 4, height = 4)
+ggsave("figures/p_r_rates/Pmax.pdf", pmax_plot, width = 8, height = 4)
 
 ```
