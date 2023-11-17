@@ -39,7 +39,7 @@ library(cowplot)
 Read in daily measurements file.  
 
 ```{r}
-daily<-read_xlsx("data/environmental/daily_measurements.xlsx")
+daily<-read_csv("data/environmental/daily_measurements.csv")
 daily$date<-as.Date(daily$date, format="%m/%d/%y")
 daily$tank<-as.factor(daily$tank)
 daily$tris.date<-as.character(daily$tris.date)
