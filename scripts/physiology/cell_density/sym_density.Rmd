@@ -79,6 +79,97 @@ sym_counts %>%
   theme_classic()# Plot mean
 ```
 
+Generate final figures 
+
+Plot with mean and standard error by lifestage and species. 
+```{r}
+
+# Calculate the number of rows including NAs
+rows_with_na <- nrow(sym_counts)
+print(rows_with_na)  # Output: 4
+
+# Calculate the number of rows excluding NAs
+rows_without_na <- length(na.omit(sym_counts$cells.cm2))
+
+print(rows_without_na)  # Output: 3
+
+plot1<-sym_counts %>%
+    group_by(Species, Lifestage)%>%
+    dplyr::summarise(mean=mean(cells.cm2, na.rm=TRUE), sd=sd(cells.cm2, na.rm=TRUE), N=length(na.omit(sym_counts$cells.cm2)), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Lifestage, y = mean / 10^6, group=Lifestage)) +
+    facet_grid(~Species)+
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Lifestage), size=6, position = position_dodge(0.4), color="darkgray") + 
+    geom_errorbar(aes(ymin=(mean/ 10^6)-(se/ 10^6), ymax=(mean/ 10^6)+(se/ 10^6), group=Lifestage), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Temperature") + 
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells cm"^-2, ")")))) +
+    ggtitle("Pocillopora")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); plot1
+
+ggsave("figures/physiology/cell_density/cells_means.png", plot1, dpi=300, w=4, h=4, units="in")
+```
+
+Plot by individual observation with colour by temperature exposure. 
+```{r}
+plot2<-sym_counts %>%
+    mutate(Temp.Cat=as.factor(Temp.Cat))%>%
+    
+    ggplot(., aes(x = Lifestage, y = cells.cm2 / 10^6, group=Lifestage, color=Temp.Cat)) +
+    facet_grid(~Species)+
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Lifestage), size=3, position = position_jitterdodge(0.5)) + 
+    xlab("Temperature") + 
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells cm"^-2, ")")))) +
+    scale_color_manual(values=c("blue2", "orange", "red3"))+
+    ggtitle("Pocillopora")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); plot2
+
+ggsave("figures/physiology/cell_density/cells_dots.png", plot2, dpi=300, w=4, h=4, units="in")
+```
+
+# Run ANOVA tests 
+
+```{r}
+model1<-sym_counts%>%
+  
+  aov(cells.cm2~Temp.Cat*Species*Lifestage, data=.)
+
+summary(model1)
+```
+
+No effect of temp, run only with species and lifesetage. 
+```{r}
+model2<-sym_counts%>%
+  
+  aov(cells.cm2~Species*Lifestage, data=.)
+
+summary(model2)
+
+emm<-emmeans(model2, ~Lifestage | Species)
+pairs(emm)
+```
+
+There is an interaction of species and lifestage and each on its own. 
+
+Recruits have lower cell density than adults in POC and POR species. No difference in Acropora. 
+
 Output data to file.  
 
 ```{r}
