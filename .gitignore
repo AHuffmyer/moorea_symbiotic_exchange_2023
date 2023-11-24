@@ -54,3 +54,6 @@ rsconnect/
 # photos folder 
 photos/
 
+#photosynthesis rate plots
+output/larvae_sdr/PhotosynthesisPlots
+
