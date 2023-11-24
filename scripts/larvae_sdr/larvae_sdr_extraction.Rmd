@@ -100,9 +100,9 @@ Sample.Info <- read_csv(file = "data/larvae_sdr/larvae_SDR_Sample_Info.csv")%>%
 rename <- Sample.Info$Chamber.ID
 samp <- Sample.Info$Sample.ID
 
-plate <- as.numeric(str_sub(file.names, 25, 26)) #EDIT THIS AS NEEDED 
+plate <- as.numeric(str_sub(file.names, 18, 19)) #EDIT THIS AS NEEDED 
 
-date <- str_sub(file.names, 4, str_length(file.names)-28) #grab date from file name EDIT IF NEEDED
+date <- str_sub(file.names, 4, str_length(file.names)-31) #grab date from file name EDIT IF NEEDED
 
 # Load PI curve run metadata (i.e., light levels and interval times for each run)
 Run.Info <- read_csv(file = "data/larvae_sdr/larvae_SDR_Run_Info.csv")
@@ -290,8 +290,7 @@ Sample.Info$unique<-paste(Sample.Info$Plate,"-",Sample.Info$Chamber.ID)
 
 oxygen$Sample.ID<-Sample.Info$Sample.ID[match(oxygen$unique, Sample.Info$unique)]
 oxygen$SDR<-Sample.Info$SDR[match(oxygen$unique, Sample.Info$unique)]
-oxygen$Tank<-Sample.Info$Tank[match(oxygen$unique, Sample.Info$unique)]
-oxygen$Symbiont<-Sample.Info$Symbiont[match(oxygen$unique, Sample.Info$unique)]
+oxygen$Species<-Sample.Info$Species[match(oxygen$unique, Sample.Info$unique)]
 oxygen$Type<-Sample.Info$Type[match(oxygen$unique, Sample.Info$unique)]
 oxygen$Salinity<-Sample.Info$Salinity[match(oxygen$unique, Sample.Info$unique)]
 oxygen$Run<-Sample.Info$Run[match(oxygen$unique, Sample.Info$unique)]
@@ -329,22 +328,27 @@ plot(as.factor(oxygen$Plate), oxygen$P.umol.L.min, xlab="Plate", ylab="rate") #p
 Subtract blank values. Average blank calculated for each run. Display mean blank value.  
 ```{r}
 blank_data <- subset(oxygen, Type == "Blank") #subset to blank data only
-plot(as.factor(blank_data$Plate), blank_data$P.umol.min, xlab="Plate", ylab="umol O2 min-1") #blanks during dark phase
+
+blank_data$code<-paste0(blank_data$Plate, "_", blank_data$Light)
+
+plot(blank_data$P.umol.min~as.factor(blank_data$code), xlab="Plate", ylab="umol O2 min-1") #blanks during dark phase
 
 #display mean blank values
 mean(blank_data$P.umol.min, na.rm=TRUE) #mean P phase blanks
 
-plot(as.factor(blank_data$Plate), blank_data$P.umol.L.min, xlab="Plate", ylab="rate") #photo rates
+hist(blank_data$P.umol.L.min)
 
 #remove outlier blank 
 blank_data<-blank_data%>%
-  filter(P.umol.L.min>-2.5)%>%
-  filter(P.umol.L.min<1.2)
+  filter(P.umol.L.min>-2)%>%
+  filter(P.umol.L.min<2)
 
-plot(as.factor(blank_data$Plate), blank_data$P.umol.L.min, xlab="Plate", ylab="rate") #photo rates after outlier removal
+hist(blank_data$P.umol.L.min)
 
-photo.blnk <- aggregate(P.umol.min ~ Date*Plate, data=blank_data, mean) #calculate average blank during light for each run
+photo.blnk <- aggregate(P.umol.min ~ code, data=blank_data, mean) #calculate average blank during light for each run
 colnames(photo.blnk)[colnames(photo.blnk) == 'P.umol.min'] <- 'P.Blank.umol.min' #rename to specify blank for R
+
+oxygen$code<-paste0(oxygen$Plate, "_", oxygen$Light)
 
 oxygen <- full_join(oxygen, photo.blnk) #add R blanks to master
 ```
@@ -378,10 +382,10 @@ plot(oxygen.bio$P.nmol.org.min)
 
 Filter outliers. 
 ```{r}
-oxygen.bio<-oxygen.bio%>%
-  filter(P.nmol.org.min> -0.2)
+#oxygen.bio<-oxygen.bio%>%
+#  filter(P.nmol.org.min> -0.2)
 
-plot(oxygen.bio$P.nmol.org.min)
+#plot(oxygen.bio$P.nmol.org.min)
 ```
 
 Add in relevant metadata. 

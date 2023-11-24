@@ -50,11 +50,13 @@ smpls %>%
 range(smpls$surface.area.cm2)
 range(stnds$surface.area.cm2)
 
-# we need to add one smaller in the curve
+hist(smpls$surface.area.cm2)
 
 #Save the output for use in normalization for phys assays
 smpls%>%
-  select(sample_id, surface.area.cm2, species, lifestage)%>%
+  select(sample_id, surface.area.cm2)%>%
   write_csv("output/physiology/surface_area/surface_area.csv")
 
 ```
+
+

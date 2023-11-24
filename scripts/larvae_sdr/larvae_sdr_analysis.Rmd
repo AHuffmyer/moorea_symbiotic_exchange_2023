@@ -58,42 +58,39 @@ library('emmeans')
 
 Load data from LoLinR.    
 ```{r, warning=FALSE, message=FALSE}
-pi_temp_data<-read.csv("output/larvae_sdr/larvae_calculated_normalized_photo_rates.csv") #load data
+pr_data<-read.csv("output/larvae_sdr/larvae_calculated_normalized_photo_rates.csv") #load data
 ```
 
 Format data. 
 ```{r, warning=FALSE, message=FALSE}
 #remove all rows of wells that did not have samples or blanks
-pi_temp_data<-pi_temp_data[!is.na(pi_temp_data$Type),]
+pr_data<-pr_data[!is.na(pr_data$Type),]
 
 #format columns
-pi_temp_data$Tank<-as.factor(pi_temp_data$Tank)
-pi_temp_data$Group<-as.factor(pi_temp_data$Symbiont)
-pi_temp_data$SDR<-as.factor(pi_temp_data$SDR)
-pi_temp_data$Plate<-as.factor(pi_temp_data$Plate)
-pi_temp_data$Temperature<-as.factor(pi_temp_data$Temperature)
+pr_data$Species<-as.factor(pr_data$Species)
+pr_data$SDR<-as.factor(pr_data$SDR)
+pr_data$Plate<-as.factor(pr_data$Plate)
+pr_data$Temperature<-as.factor(pr_data$Temperature)
 ```
 
 Look for outliers in the data.  
 
 ```{r}
-boxplot(pi_temp_data$P.nmol.org.min)
+boxplot(pr_data$P.nmol.org.min)
 #pi_temp_data<-pi_temp_data%>%filter(P.nmol.org.min < 0.10)
 #boxplot(pi_temp_data$P.nmol.org.min)
 
-boxplot(pi_temp_data$P.nmol.org.min~pi_temp_data$PAR)
+boxplot(pr_data$P.nmol.org.min~pr_data$PAR*pr_data$Species)
 ```
 
 Set values at 0 for light runs if <0 indicating no photosynthesis occurred. Set values at 0 for dark runs if >0 indicating no respiration occurred. 
 ```{r}
-pi_temp_data<-pi_temp_data%>%
-  mutate(P.nmol.org.min=if_else(P.nmol.org.min<0 & PAR==50, 0, 
-                      if_else(P.nmol.org.min<0 & PAR==100, 0, 
-                              if_else(P.nmol.org.min<0 & PAR==500, 0, 
-                                      if_else(P.nmol.org.min>0 & PAR==0.1, 0, 
-                                              if_else(P.nmol.org.min>0 & PAR==0.2, 0, P.nmol.org.min))))))
+pr_data<-pr_data%>%
+  mutate(P.nmol.org.min=if_else(Species=="Pocillopora" & P.nmol.org.min<0 & PAR==150, 0,
+                              if_else(Species=="Pocillopora" & P.nmol.org.min>0 & PAR==0, 0,
+                                    if_else(Species=="Acropora" & P.nmol.org.min>0, 0, P.nmol.org.min))))
 
-boxplot(pi_temp_data$P.nmol.org.min~pi_temp_data$PAR)
+boxplot(pr_data$P.nmol.org.min~pr_data$PAR*pr_data$Species)
 ```
 
 Calculate mean temperature values for each run.    
@@ -102,1062 +99,359 @@ Calculate mean temperature values for each run.
 pr.temps<-read.csv("output/larvae_sdr/runs_temp.csv")
 pr.temps = subset(pr.temps, select = -c(X) ) #remove empty column
 
-pi_temp_data$Plate<-as.integer(pi_temp_data$Plate)
+pr_data$Plate<-as.integer(pr_data$Plate)
 ```
 
 Add temperature data to master data frame.  
 ```{r}
-pi_temp_data<-left_join(pi_temp_data,pr.temps)
+pr_data<-left_join(pr_data,pr.temps)
 
 #round to 0.1°C 
-pi_temp_data<-pi_temp_data%>%
+pr_data<-pr_data%>%
   mutate(Temp.C=round(Temp.C,1))
+
+levels(as.factor(pr_data$Temp.C))
+levels(as.factor(pr_data$Temperature))
+
+pr.temps%>%group_by(Plate)%>%summarise(mean=mean(Temp.C))
+```
+
+Rename temperature categories. 
+```{r}
+pr_data<-pr_data%>%
+  mutate(Temperature=if_else(Temperature=="27", "28.4", 
+                           if_else(Temperature=="30", "29.4", 
+                                   if_else(Temperature=="33", "31.5", NA))))
+
+pr_data$Temperature
 ```
 
 Reorder factor.  EDIT AS NEEDED 
 ```{r}
-pi_temp_data$PAR<-factor(pi_temp_data$PAR, levels=c("0.1", "50", "100", "500", "0.2"))
+pr_data$PAR<-as.factor(pr_data$PAR)
+pr_data$PAR
+pr_data$Light<-as.factor(pr_data$Light)
+pr_data$Light
 ```
 
-# Plot and analyze EDIT BELOW THIS POINT 
+# Plot and analyze ACR
 
-Plot data with means   
+Plot data with means 
+
+Remove well 3-B1 - respiration rates were weird in the light (but worked in the dark). So remove for now and we can come back and replace the light period with the dark period as this sample did not reach oxygen depletion. 
 ```{r}
-pi_temp_plot1<-pi_temp_data %>%
-    group_by(PAR, Group, Temperature)%>%
+pr_data<-pr_data%>%
+  filter(!unique=="3 - B1")
+```
+
+Acropora. 
+
+Plot respiration rates only at 150 PAR. This is where respiration is taking place. By the time we get to the dark portion of the run oxygen is depleted and rates decrease. 
+```{r}
+pi_temp_plot1<-pr_data %>%
+    filter(Species=="Acropora")%>%
+    filter(PAR=="150")%>%
+    group_by(PAR, Species, Temperature)%>%
+    mutate(Temperature=as.factor(Temperature))%>%
     dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
     
-    ggplot(., aes(x = as.factor(PAR), y = mean, group=interaction(PAR, Group))) +
-    facet_wrap(~Temperature)+
+    ggplot(., aes(x = Temperature, y = -1*mean, group=interaction(PAR, Temperature))) +
     geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(PAR, Group), colour=Group), size=6, position = position_dodge(0.4)) + 
-    geom_errorbar(aes(ymin=mean-se, ymax=mean+se, group=interaction(PAR, Group)), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Light (PAR)") + 
-    scale_color_manual(name="Group", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("P (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    geom_point(aes(group=interaction(PAR, Temperature), colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(-1*mean)-se, ymax=(-1*mean)+se, group=interaction(PAR, Temperature)), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Temperature (°C)") + 
+    ylab(expression(bold(paste("R (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
     #ylim(0, 0.05)+
+    ggtitle("Acropora")+
     theme_classic() + 
     theme(
-      legend.position="right",
+      legend.position="none",
       axis.title=element_text(face="bold", size=16),
       axis.text=element_text(size=12, color="black"), 
       legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
       ); pi_temp_plot1
 
-ggsave("figures/larvae_sdr/pi_means.png", pi_temp_plot1, dpi=300, w=7, h=5, units="in")
+ggsave("figures/larvae_sdr/R_means_acr.png", pi_temp_plot1, dpi=300, w=4, h=4, units="in")
 ```
 
-Display with plate. 
+Plot with individual data points. 
 ```{r}
-pi_temp_plot1a<-pi_temp_data %>%
-    group_by(PAR, Symbiont, Plate)%>%
+pi_temp_plot2<-pr_data %>%
+    filter(Species=="Acropora")%>%
+    filter(PAR=="150")%>%
+    group_by(PAR, Species, Temperature)%>%
+    mutate(Temperature=as.factor(Temperature))%>%
+    
+    ggplot(., aes(x = Temperature, y = -1*P.nmol.org.min, group=interaction(PAR, Temperature))) +
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=interaction(PAR, Temperature), colour=Temperature), size=3, position = position_jitterdodge(0.4)) + 
+    xlab("Temperature (°C)") + 
+    ylab(expression(bold(paste("R (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    #ylim(0, 0.05)+
+    #geom_text(aes(label=unique))+
+    ggtitle("Acropora")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); pi_temp_plot2
+
+ggsave("figures/larvae_sdr/pi_dots_acr.png", pi_temp_plot2, dpi=300, w=4, h=4, units="in")
+```
+
+# Plot and analyze POC
+
+Plot data with means 
+
+PAR 150 (light 1) = photosynthesis
+PAR 0 (light 2)= LEDR 
+```{r}
+pi_temp_plot3<-pr_data %>%
+    filter(Species=="Pocillopora")%>%
+    group_by(PAR, Species, Temperature)%>%
     dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
     
-    ggplot(., aes(x = as.factor(PAR), y = mean, group=interaction(PAR, Symbiont))) +
-    facet_wrap(~Plate)+
+    ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
     geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(PAR, Symbiont), colour=Symbiont), size=6, position = position_dodge(0.4)) + 
-    geom_errorbar(aes(ymin=mean-se, ymax=mean+se, group=interaction(PAR, Symbiont)), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Light (PAR)") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("P (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    facet_grid(~PAR, scales="free_y")+
+    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Temperature") + 
+    ylab(expression(bold(paste("Rate (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
     #ylim(0, 0.05)+
+    ggtitle("Pocillopora")+
     theme_classic() + 
     theme(
-      legend.position="right",
+      legend.position="none",
       axis.title=element_text(face="bold", size=16),
       axis.text=element_text(size=12, color="black"), 
       legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); pi_temp_plot1a
-```
-
-View by plate. 
-```{r}
-pi_temp_plot2b<-pi_temp_data %>%
-    ggplot(., aes(x = as.factor(PAR), y = P.nmol.org.min, group=Symbiont)) +
-    facet_wrap(~Plate)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_smooth(aes(color=Symbiont, group=Symbiont), method="loess", alpha=0.4, se=FALSE)+
-    xlab("Light (PAR)") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("P (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); pi_temp_plot2b
-```
-
-Plot data with dots   
-```{r}
-pi_temp_plot3<-pi_temp_data %>%
-  
-    ggplot(., aes(x = as.factor(PAR), y = P.nmol.org.min, group=interaction(PAR, Symbiont))) +
-    facet_wrap(~Temperature)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(PAR, Symbiont), color=Symbiont), size=3, fill="white", position = position_jitterdodge(0.4), shape=21) + 
-    geom_smooth(aes(color=Symbiont, group=Symbiont), method="loess", size=2, alpha=0.4, se=FALSE)+
-    xlab("Light (PAR)") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("P (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
       ); pi_temp_plot3
 
-ggsave("figures/temp_pi_curves/pi_temp_dots.png", pi_temp_plot3, dpi=300, w=7, h=5, units="in")
+ggsave("figures/larvae_sdr/pi_means_poc.png", pi_temp_plot3, dpi=300, w=4, h=4, units="in")
 ```
 
-## Conduct anova 
+Plot with individual data points. Outliers in R at ambient do not have any red flags - looks like true biological response.
+```{r}
+pi_temp_plot4<-pr_data %>%
+    filter(Species=="Pocillopora")%>%
+    group_by(PAR, Species, Temperature)%>%
+    mutate(Temperature=as.factor(Temperature))%>%
+    
+    ggplot(., aes(x = as.factor(PAR), y = P.nmol.org.min, group=Temperature)) +
+    facet_grid(~PAR, scales="free_y")+
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Temperature, colour=Temperature), size=3, position = position_jitterdodge(0.4)) + 
+    xlab("Temperature (°C)") + 
+    ylab(expression(bold(paste("R (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    #ylim(0, 0.05)+
+    ggtitle("Pocillopora")+
+    theme_classic() + 
+    #geom_text(aes(label=unique))+
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); pi_temp_plot4
+
+ggsave("figures/larvae_sdr/pi_dots_poc.png", pi_temp_plot4, dpi=300, w=4, h=4, units="in")
+```
+
+Plot separate P and R plots for Pocillopora 
+
+```{r}
+pi_temp_plot5<-pr_data %>%
+    filter(Species=="Pocillopora")%>%
+    filter(PAR=="0")%>%
+    group_by(PAR, Species, Temperature)%>%
+    dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Temperature, y = mean*-1, group=Temperature)) +
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean*-1)-se, ymax=(mean*-1)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Temperature") + 
+    ylab(expression(bold(paste("LEDR (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    #ylim(0, 0.05)+
+    ggtitle("Pocillopora")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); pi_temp_plot5
+
+ggsave("figures/larvae_sdr/LEDR_means_poc.png", pi_temp_plot5, dpi=300, w=4, h=4, units="in")
+```
+
+
+```{r}
+pi_temp_plot6<-pr_data %>%
+    filter(Species=="Pocillopora")%>%
+    filter(PAR=="150")%>%
+    group_by(PAR, Species, Temperature)%>%
+    dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Temperature") + 
+    ylab(expression(bold(paste("P (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    ylim(0, 0.002)+
+    ggtitle("Pocillopora")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); pi_temp_plot6
+
+ggsave("figures/larvae_sdr/P_means_poc.png", pi_temp_plot6, dpi=300, w=4, h=4, units="in")
+```
+
+## Plot PR ratio for Pocillopora 
+
+```{r}
+pi_temp_plot7<-pr_data %>%
+    filter(Species=="Pocillopora")%>%
+    select(Species, PAR, Temperature, P.nmol.org.min, unique)%>%
+    pivot_wider(names_from=PAR, values_from=P.nmol.org.min)%>%
+    mutate(`0`=`0`*-1)%>%
+    mutate(ratio=`150`/`0`)%>%
+    group_by(Species, Temperature)%>%
+    dplyr::summarise(mean=mean(ratio, na.rm=TRUE), sd=sd(ratio, na.rm=TRUE), N=length(ratio), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Temperature") + 
+    ylab(expression(bold(paste("P:LEDR Ratio")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    #ylim(0, 0.05)+
+    ggtitle("Pocillopora")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); pi_temp_plot7
+
+ggsave("figures/larvae_sdr/PR_ratio_means_poc.png", pi_temp_plot7, dpi=300, w=4, h=4, units="in")
+```
+
+# Panel of PR plots of both species 
+
+```{r}
+panel<-plot_grid(pi_temp_plot1, pi_temp_plot5, pi_temp_plot6, pi_temp_plot7, ncol=4, nrow=1)
+
+ggsave("figures/larvae_sdr/all_PR_panel.png", panel, dpi=300, w=16, h=4, units="in")
+```
+
+
+# Conduct anova test 
 
 Run anova on values at each temperature
 ```{r}
-model<-pi_temp_data%>%
-  aov(P.nmol.org.min~PAR*Symbiont*Temperature, data=.)
+model<-pr_data%>%
+  aov(P.nmol.org.min~PAR*Species*Temperature, data=.)
 
 summary(model)
 ```
-There is an effect of temperature x light. 
+Interactions of PAR x Species x Temperature. 
 
-Run model for 27 
+Subset analysis for each species 
+
+ACR respiration: 
 ```{r}
-model<-pi_temp_data%>%
-  filter(Temperature==27)%>%
-  aov(P.nmol.org.min~PAR*Symbiont, data=.)
+model_acr<-pr_data%>%
+  filter(Species=="Acropora")%>%
+  filter(PAR=="150")%>%
+  aov(P.nmol.org.min~Temperature, data=.)
 
-summary(model)
-```
-There is an effect of light at 27C. 
+summary(model_acr)
 
-Run model for 30
-```{r}
-model<-pi_temp_data%>%
-  filter(Temperature==30)%>%
-  aov(P.nmol.org.min~PAR*Symbiont, data=.)
-
-summary(model)
-```
-There is an effect of light at 30C. 
-
-Run model for 33
-```{r}
-model<-pi_temp_data%>%
-  filter(Temperature==33)%>%
-  aov(P.nmol.org.min~PAR*Symbiont, data=.)
-
-summary(model)
-```
-There is an effect of light at 33C. 
-
-Run model for 36
-```{r}
-model<-pi_temp_data%>%
-  filter(Temperature==36)%>%
-  aov(P.nmol.org.min~PAR*Symbiont, data=.)
-
-summary(model)
-```
-There is an effect of light at 36C. 
-
-# Calculate R, P, and P:R 
-
-Calculate gross photosynthesis and P:R ratio. 
-```{r}
-pi_temp_data_calc<-pi_temp_data%>%
-  select(Date, Chamber.ID, Plate, Run, Temperature, Symbiont, PAR, P.nmol.org.min)%>%
-  pivot_wider(names_from=PAR, values_from=P.nmol.org.min)%>%
-  mutate(ler=`0.2`)%>%
-  mutate(rd=`0.1`)%>%
-  mutate(ler_inverse=ler*-1)%>%
-  mutate(rd_inverse=rd*-1)%>%
-  mutate(p_net_low=`50`)%>%
-  mutate(p_net_medium=`100`)%>%
-  mutate(p_net_high=`500`)%>%
-  mutate(p_gross_low=p_net_low-ler)%>%
-  mutate(p_gross_medium=p_net_medium-ler)%>%
-  mutate(p_gross_high=p_net_high-ler)%>%
-  mutate(ratio_low=p_gross_low/ler_inverse)%>%
-  mutate(ratio_medium=p_gross_medium/ler_inverse)%>%
-  mutate(ratio_high=p_gross_high/ler_inverse)%>%
-  pivot_longer(names_to="Metric", values_to="Value", cols=c(ler:ratio_high))%>%
-  select(!c(`0.1`, `50`, `100`, `500`, `0.2`))
-
-boxplot(pi_temp_data_calc$Value)
-
-pi_temp_data_calc<-pi_temp_data_calc%>%
- filter(Value<15)
-
-boxplot(pi_temp_data_calc$Value)
-```
-
-Set level of factors. 
-```{r}
-levels(as.factor(pi_temp_data_calc$Metric))
-
-pi_temp_data_calc$Metric<-factor(pi_temp_data_calc$Metric, levels=c("p_gross_low", "p_gross_medium", "p_gross_high", "p_net_low", "p_net_medium", "p_net_high", "ratio_low", "ratio_medium", "ratio_high", "rd", "rd_inverse", "ler", "ler_inverse"))
-```
-
-View P metrics by dots. 
-```{r}
-metric_plot1<-pi_temp_data_calc%>%
-    filter(!Metric=="ratio_high")%>%
-    filter(!Metric=="ratio_medium")%>%
-    filter(!Metric=="ratio_low")%>%
-    filter(!Metric=="ler")%>%
-    filter(!Metric=="rd")%>%
-    filter(!Metric=="ler_inverse")%>%
-    filter(!Metric=="rd_inverse")%>%
-  
-    ggplot(., aes(x = Temperature, y = Value)) +
-    facet_wrap(~Metric)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(Temperature, Symbiont), color=Symbiont), size=3, fill="white", position = position_jitterdodge(0.4), shape=21) + 
-    geom_smooth(aes(color=Symbiont, group=Symbiont), method="loess", size=2, alpha=0.4, se=FALSE)+
-    xlab("Temperature") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("Value")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); metric_plot1
-
-ggsave("figures/temp_pi_curves/pi_metrics.png", metric_plot1, dpi=300, w=7, h=5, units="in")
-```
-
-View P metrics by means. 
-```{r}
-metric_plot1_means<-pi_temp_data_calc%>%
-    filter(!Metric=="ratio_high")%>%
-    filter(!Metric=="ratio_medium")%>%
-    filter(!Metric=="ratio_low")%>%
-    filter(!Metric=="ler")%>%
-    filter(!Metric=="rd")%>%
-    filter(!Metric=="ler_inverse")%>%
-    filter(!Metric=="rd_inverse")%>%
-
-    group_by(Metric, Symbiont, Temperature)%>%
-    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
-  
-  
-    ggplot(., aes(x = Temperature, y = mean)) +
-    facet_wrap(~Metric)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(Temperature, Symbiont), color=Symbiont), size=4, fill="white", position = position_dodge(0.4), shape=19) + 
-    geom_errorbar(aes(ymin=mean-se, ymax=mean+se, group=interaction(Metric, Symbiont)), width=0, linetype="solid", position=position_dodge(0.4), size=0.6, color="black")+
-    xlab("Temperature") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("Value")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); metric_plot1_means
-
-ggsave("figures/temp_pi_curves/pi_metrics_mean.png", metric_plot1_means, dpi=300, w=7, h=5, units="in")
-```
-
-View Rd and LER metrics. 
-```{r}
-metric_plot1a<-pi_temp_data_calc%>%
-    filter(Metric %in% c("ler_inverse", "rd_inverse"))%>%
-  
-    ggplot(., aes(x = Temperature, y = Value)) +
-    facet_wrap(~Metric)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(Temperature, Symbiont), color=Symbiont), size=3, fill="white", position = position_jitterdodge(0.4), shape=21) + 
-    geom_smooth(aes(color=Symbiont, group=Symbiont), method="loess", size=2, alpha=0.4, se=FALSE)+
-    xlab("Temperature") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("Value")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); metric_plot1a
-
-ggsave("figures/temp_pi_curves/pi_rd_ler.png", metric_plot1a, dpi=300, w=7, h=5, units="in")
-```
-
-LER is higher than Rd because photosynthesis stimulates respiration in the host.  
-
-View Rd and LER metrics by means. 
-```{r}
-metric_plot1a_means<-pi_temp_data_calc%>%
-    filter(Metric %in% c("ler_inverse", "rd_inverse"))%>%
-  
-    group_by(Metric, Symbiont, Temperature)%>%
-    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
-  
-    ggplot(., aes(x = Temperature, y = mean)) +
-    facet_wrap(~Metric)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(Temperature, Symbiont), color=Symbiont), size=3, fill="white", position = position_dodge(0.4), shape=19) + 
-    geom_errorbar(aes(ymin=mean-se, ymax=mean+se, group=interaction(Metric, Symbiont)), width=0, linetype="solid", position=position_dodge(0.4), size=0.6, color="black")+
-    xlab("Temperature") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("Value")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); metric_plot1a_means
-
-ggsave("figures/temp_pi_curves/pi_rd_ler_means.png", metric_plot1a_means, dpi=300, w=7, h=5, units="in")
-```
-
-View P:R metrics. 
-```{r}
-metric_plot2<-pi_temp_data_calc%>%
-    filter(Metric %in% c("ratio_high", "ratio_medium", "ratio_low"))%>%
-    filter(Value>0)%>%
-  
-    ggplot(., aes(x = Temperature, y = Value)) +
-    facet_wrap(~Metric)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(Temperature, Symbiont), color=Symbiont), size=3, fill="white", position = position_jitterdodge(0.4), shape=21) + 
-    geom_smooth(aes(color=Symbiont, group=Symbiont), method="loess", size=2, alpha=0.4, se=FALSE)+
-    xlab("Temperature") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("Value")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); metric_plot2
-
-ggsave("figures/temp_pi_curves/pi_ratio.png", metric_plot2, dpi=300, w=7, h=5, units="in")
-```
-
-View P:R ratios by means. 
-```{r}
-metric_plot2_means<-pi_temp_data_calc%>%
-    filter(Metric %in% c("ratio_high", "ratio_medium", "ratio_low"))%>%
-    filter(Value>0)%>%
-  
-    group_by(Metric, Symbiont, Temperature)%>%
-    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
-
-    ggplot(., aes(x = Temperature, y = mean)) +
-    facet_wrap(~Metric)+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(Temperature, Symbiont), color=Symbiont), size=3, fill="white", position = position_dodge(0.4), shape=19) + 
-    geom_errorbar(aes(ymin=mean-se, ymax=mean+se, group=interaction(Metric, Symbiont)), width=0, linetype="solid", position=position_dodge(0.4), size=0.6, color="black")+
-    xlab("Temperature") + 
-    scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-    ylab(expression(bold(paste("Value")))) +
-    #ylim(0, 0.05)+
-    theme_classic() + 
-    theme(
-      legend.position="right",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12)
-      ); metric_plot2_means
-
-ggsave("figures/temp_pi_curves/pi_ratio_means.png", metric_plot2_means, dpi=300, w=7, h=5, units="in")
-```
-
-# Run anova tests
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="ratio_high")%>%
-  filter(Value>0)%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-Ratios are lower at 36 C under low light. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="ratio_medium")%>%
-  filter(Value>0)%>% 
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-```
-Ratios decrease with temperature under medium light.  
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="ratio_low")%>%
-  filter(Value>0)%>% 
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-Ratios decrease with temperature at high light. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="ler_inverse")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-TukeyHSD(model, c("Symbiont"))
-```
-LER is affected by temperature and symbiont. LER is higher in WT than Mix and almost higher in WT than C. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="rd_inverse")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Symbiont"))
-TukeyHSD(model, c("Temperature"))
-```
-Rd is affected by temperature. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="p_gross_high")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-P gross decreases with temperature when at high light. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="p_gross_medium")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-P gross is affected by temperature at medium light. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="p_gross_low")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-P gross at low light decreases with temperature. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="p_net_low")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-P net at low light decreases with temperature. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="p_net_medium")%>%
-  aov(Value~Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-P net at medium light decreases with temperature. 
-
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric=="p_net_high")%>%
-  aov(Value~Symbiont*Temperature, data=.)
-
-summary(model)
-
-TukeyHSD(model, c("Temperature"))
-```
-P net at high light decreases with temperature. 
-
-## Test effect of light 
-
-Test effect of light on P:R ratio. 
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric %in% c("ratio_low", "ratio_medium", "ratio_high"))%>%
-  filter(Value>0)%>%
-  aov(Value~Metric*Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, "Metric")
-TukeyHSD(model, "Temperature")
-TukeyHSD(model, "Symbiont")
-
-emm<-emmeans(model, ~ Metric | Temperature)
+emm<-emmeans(model_acr, ~Temperature)
 pairs(emm)
 
-emm<-emmeans(model, ~ Symbiont | Temperature)
+```
+
+Strong efffect of temperature on ACR respiration. 31.5 respiration is lower than that at other temperatures. 28.4 and 29.4 are not different. 
+
+POC respiration: 
+```{r}
+model_poc_r<-pr_data%>%
+  filter(Species=="Pocillopora")%>%
+  filter(PAR=="0")%>%
+  aov(P.nmol.org.min~Temperature, data=.)
+
+summary(model_poc_r)
+
+emm<-emmeans(model_poc_r, ~Temperature)
 pairs(emm)
 
-emm<-emmeans(model, ~ Symbiont | Temperature | Metric)
+```
+
+No effect of temperature on LEDR in Pocillopora - likely driven by variability in ambient group. 
+
+POC photosynthesis: 
+```{r}
+model_poc_p<-pr_data%>%
+  filter(Species=="Pocillopora")%>%
+  filter(PAR=="150")%>%
+  aov(P.nmol.org.min~Temperature, data=.)
+
+summary(model_poc_p)
+
+emm<-emmeans(model_poc_p, ~Temperature)
 pairs(emm)
-```
-There are light and temperature and symbiont effects on P:R ratio. Mix is higher than WT (p=0.025) and slightly higher than C (p=0.08). Mix is higher than WT at 30 C and higher than C at 27C. 
-
-Test effect of light on P gross.  
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric %in% c("p_gross_low", "p_gross_medium", "p_gross_high"))%>%
-  aov(Value~Metric*Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, "Metric")
-TukeyHSD(model, "Temperature")
-
-emm<-emmeans(model, ~ Metric | Temperature)
-pairs(emm)
-```
-Interaction between light and temperature for P gross. There is almost a temp x symbiont effect (p=0.06). 
-
-Test effect of light on P net.   
-```{r}
-model<-pi_temp_data_calc%>%
-  filter(Metric %in% c("p_net_low", "p_net_medium", "p_net_high"))%>%
-  aov(Value~Metric*Temperature*Symbiont, data=.)
-
-summary(model)
-
-TukeyHSD(model, "Metric")
-TukeyHSD(model, "Temperature")
-
-emm<-emmeans(model, ~ Metric | Temperature)
-pairs(emm)
-```
-Interaction between temperature and light on P net. 
-
-# TPC on dark respiration 
-
-IN THIS SECTION I NEED TO FIX THE NLS MODEL FIT LINE, NOT CALCULATING CORRECTLY 
-
-
-Run a TPC on the LER respiration data across 27-36C. Examine LER across temperatures. 
-
-```{r}
-tpc<-pi_temp_data_calc%>%
-  filter(Metric=="ler_inverse")%>%
-  pivot_wider(names_from = Metric, values_from = Value)%>%
-  mutate(Temperature=as.numeric(as.character(Temperature)))
-```
-
-Run TPC using same method as in `tpc_sdr_analysis.Rmd` script. 
-
-## Run for C symbionts 
-
-```{r}
-tpc.C<-tpc%>%
-  filter(Symbiont=="C")
-
-# choose model
-mod = 'sharpschoolhigh_1981'
-
-# get start vals
-start_vals <- get_start_vals(tpc.C$Temperature, tpc.C$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-
-# get limits
-low_lims <- get_lower_lims(tpc.C$Temperature, tpc.C$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-upper_lims <- get_upper_lims(tpc.C$Temperature, tpc.C$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-
-fit.C <- nls_multstart(ler_inverse~sharpeschoolhigh_1981(temp = Temperature, r_tref,e,eh,th, tref = 27),
-                                                     data = tpc.C,
-                                                     iter = 500,
-                                                     start_lower = start_vals - 10,
-                                                     start_upper = start_vals + 10,
-                                                     lower = low_lims,
-                                                     upper = upper_lims,
-                                                     supp_errors = 'Y')
-
-fit.C
-
-# predict new data
-new_data.C <- data.frame(temp = seq(min(tpc.C$Temperature), max(tpc.C$Temperature), by=((max(tpc.C$Temperature)-min(tpc.C$Temperature))/(nrow(tpc.C)-1))))
-
-preds.C <- augment(fit.C, newdata = new_data.C)
-
-# plot data and model fit
-ggplot(tpc.C, aes(x=Temperature, y=ler_inverse)) +
-  geom_point() +
-  geom_line(aes(temp, .fitted), preds.C, col = 'orange') +
-  theme_bw(base_size = 12) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Metabolic rate',
-       title = 'LER across temperatures: C')
-```
-
-Bootstrap for confidence intervals. 
-```{r}
-#refit 
-fit_nlsLM.C <- minpack.lm::nlsLM(ler_inverse~sharpeschoolhigh_1981(temp = Temperature, r_tref, e, eh, th, tref = 27),
-                        data = tpc.C,
-                        start = coef(fit.C),
-                        lower = low_lims,
-                        upper = upper_lims,
-                        weights = rep(1, times = nrow(tpc.C)))
-
-# bootstrap using case resampling
-boot.C <- Boot(fit_nlsLM.C, method = 'case')
-
-# look at the data
-head(boot.C$t)
-
-# create predictions of each bootstrapped model
-boot_preds.C <- boot.C$t %>%
-  as.data.frame() %>%
-  drop_na() %>%
-  dplyr::mutate(iter = 1:n()) %>%
-  group_by_all() %>%
-  do(data.frame(temp = seq(min(tpc.C$Temperature), max(tpc.C$Temperature), length.out = 100))) %>%
-  ungroup() %>%
-  dplyr::mutate(pred = sharpeschoolhigh_1981(temp, r_tref, e, eh, th, tref = 27))
-
-# calculate bootstrapped confidence intervals
-boot_conf_preds.C <- group_by(boot_preds.C, temp) %>%
-  dplyr::summarise(conf_lower = quantile(pred, 0.025),
-            conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
-
-# plot bootstrapped CIs
-CI.plot.C <- ggplot() +
-  geom_line(aes(temp, .fitted), preds.C, col = 'orange') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds.C, fill = 'orange', alpha = 0.3) +
-  geom_point(aes(Temperature, ler_inverse), tpc.C, size = 2, alpha = 0.5,col = 'orange') +
-  theme_bw(base_size = 12) +
-    theme_classic()+
-  labs(x = 'Temperature (ºC)',
-       y = 'LER (nmol O2/larva/min)', 
-       title = "TPC: C");CI.plot.C
 
 ```
 
-Print parameters 
+Temperature effects. Photosynthesis is lower at 31.5 than at 28.4. 
+
+POC PR ratio: 
 ```{r}
-# calculate additional traits
-calc_params(fit.C) %>%
-  # round for easy viewing
-  mutate_all(round, 2)
-```
-
-
-## Run for MIX symbionts 
-
-```{r}
-tpc.MIX<-tpc%>%
-  #filter(R.inverse<0.03)%>%
-  #filter(!c(R.inverse>0.02 & Temp_corrected==37))%>%
-  #filter(!c(R.inverse>0.02 & Temp_corrected==13))%>%
-  #filter(!c(R.inverse< -0.01 & Temp_corrected==23))%>%
-  #filter(!c(R.inverse< 0 & Temp_corrected==32))%>%
-  #filter(!c(R.inverse< -0.005 & Temp_corrected==37))%>%
-  #filter(!c(R.inverse< -0.005 & Temp_corrected==34))%>%
-  filter(Symbiont=="MIX")
-
-# choose model
-mod = 'sharpschoolhigh_1981'
-
-# get start vals
-start_vals <- get_start_vals(tpc.MIX$Temperature, tpc.MIX$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-
-# get limits
-low_lims <- get_lower_lims(tpc.MIX$Temperature, tpc.MIX$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-upper_lims <- get_upper_lims(tpc.MIX$Temperature, tpc.MIX$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-
-fit.MIX <- nls_multstart(ler_inverse~sharpeschoolhigh_1981(temp = Temperature, r_tref,e,eh,th, tref = 27),
-                                                     data = tpc.MIX,
-                                                     iter = 500,
-                                                     start_lower = start_vals - 10,
-                                                     start_upper = start_vals + 10,
-                                                     lower = low_lims,
-                                                     upper = upper_lims,
-                                                     supp_errors = 'Y')
-
-fit.MIX
-
-# predict new data
-new_data.MIX <- data.frame(temp = seq(min(tpc.MIX$Temperature), max(tpc.MIX$Temperature), by=((max(tpc.MIX$Temperature)-min(tpc.MIX$Temperature))/(nrow(tpc.MIX)-1))))
-
-preds.MIX <- augment(fit.MIX, newdata = new_data.MIX)
-
-# plot data and model fit
-ggplot(tpc.MIX, aes(x=Temperature, y=ler_inverse)) +
-  geom_point() +
-  geom_line(aes(temp, .fitted), preds.MIX, col = 'brown4') +
-  theme_bw(base_size = 12) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Metabolic rate',
-       title = 'LER across temperatures: C')
-```
-
-Bootstrap for confidence intervals. 
-```{r}
-#refit 
-fit_nlsLM.MIX <- minpack.lm::nlsLM(ler_inverse~sharpeschoolhigh_1981(temp = Temperature, r_tref, e, eh, th, tref = 27),
-                        data = tpc.MIX,
-                        start = coef(fit.MIX),
-                        lower = low_lims,
-                        upper = upper_lims,
-                        weights = rep(1, times = nrow(tpc.MIX)))
-
-# bootstrap using case resampling
-boot.MIX <- Boot(fit_nlsLM.MIX, method = 'case')
-
-# look at the data
-head(boot.MIX$t)
-
-# create predictions of each bootstrapped model
-boot_preds.MIX <- boot.MIX$t %>%
-  as.data.frame() %>%
-  drop_na() %>%
-  dplyr::mutate(iter = 1:n()) %>%
-  group_by_all() %>%
-  do(data.frame(temp = seq(min(tpc.MIX$Temperature), max(tpc.MIX$Temperature), length.out = 100))) %>%
-  ungroup() %>%
-  dplyr::mutate(pred = sharpeschoolhigh_1981(temp, r_tref, e, eh, th, tref = 27))
-
-# calculate bootstrapped confidence intervals
-boot_conf_preds.MIX <- group_by(boot_preds.MIX, temp) %>%
-  dplyr::summarise(conf_lower = quantile(pred, 0.025),
-            conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
-
-# plot bootstrapped CIs
-CI.plot.MIX <- ggplot() +
-  geom_line(aes(temp, .fitted), preds.MIX, col = 'brown4') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds.MIX, fill = 'brown4', alpha = 0.3) +
-  geom_point(aes(Temperature, ler_inverse), tpc.C, size = 2, alpha = 0.5,col = 'brown4') +
-  theme_bw(base_size = 12) +
-    theme_classic()+
-  labs(x = 'Temperature (ºC)',
-       y = 'LER (nmol O2/larva/min)', 
-       title = "TPC: MIX");CI.plot.MIX
-
-```
-
-Print parameters 
-```{r}
-# calculate additional traits
-calc_params(fit.MIX) %>%
-  # round for easy viewing
-  mutate_all(round, 2)
-```
-
-
-## Run for WT symbionts 
-
-```{r}
-tpc.WT<-tpc%>%
-  filter(Symbiont=="WT")
-
-# choose model
-mod = 'sharpschoolhigh_1981'
-
-# get start vals
-start_vals <- get_start_vals(tpc.WT$Temperature, tpc.WT$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-
-# get limits
-low_lims <- get_lower_lims(tpc.WT$Temperature, tpc.WT$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-upper_lims <- get_upper_lims(tpc.WT$Temperature, tpc.WT$ler_inverse, model_name = 'sharpeschoolhigh_1981')
-
-fit.WT <- nls_multstart(ler_inverse~sharpeschoolhigh_1981(temp = Temperature, r_tref,e,eh,th, tref = 27),
-                                                     data = tpc.WT,
-                                                     iter = 500,
-                                                     start_lower = start_vals - 10,
-                                                     start_upper = start_vals + 10,
-                                                     lower = low_lims,
-                                                     upper = upper_lims,
-                                                     supp_errors = 'Y')
-
-fit.WT
-
-# predict new data
-new_data.WT <- data.frame(temp = seq(min(tpc.WT$Temperature), max(tpc.WT$Temperature), by=((max(tpc.WT$Temperature)-min(tpc.WT$Temperature))/(nrow(tpc.WT)-1))))
-
-preds.WT <- augment(fit.WT, newdata = new_data.WT)
-
-# plot data and model fit
-ggplot(tpc.WT, aes(x=Temperature, y=ler_inverse)) +
-  geom_point() +
-  geom_line(aes(temp, .fitted), preds.WT, col = 'gray') +
-  theme_bw(base_size = 12) +
-  labs(x = 'Temperature (ºC)',
-       y = 'Metabolic rate',
-       title = 'LER across temperatures: C')
-```
-
-Bootstrap for confidence intervals. 
-```{r}
-#refit 
-fit_nlsLM.WT <- minpack.lm::nlsLM(ler_inverse~sharpeschoolhigh_1981(temp = Temperature, r_tref, e, eh, th, tref = 27),
-                        data = tpc.WT,
-                        start = coef(fit.WT),
-                        lower = low_lims,
-                        upper = upper_lims,
-                        weights = rep(1, times = nrow(tpc.WT)))
-
-# bootstrap using case resampling
-boot.WT <- Boot(fit_nlsLM.WT, method = 'case')
-
-# look at the data
-head(boot.WT$t)
-
-# create predictions of each bootstrapped model
-boot_preds.WT <- boot.WT$t %>%
-  as.data.frame() %>%
-  drop_na() %>%
-  dplyr::mutate(iter = 1:n()) %>%
-  group_by_all() %>%
-  do(data.frame(temp = seq(min(tpc.WT$Temperature), max(tpc.WT$Temperature), length.out = 100))) %>%
-  ungroup() %>%
-  dplyr::mutate(pred = sharpeschoolhigh_1981(temp, r_tref, e, eh, th, tref = 27))
-
-# calculate bootstrapped confidence intervals
-boot_conf_preds.WT <- group_by(boot_preds.WT, temp) %>%
-  dplyr::summarise(conf_lower = quantile(pred, 0.025),
-            conf_upper = quantile(pred, 0.975)) %>%
-  ungroup()
-
-# plot bootstrapped CIs
-CI.plot.WT <- ggplot() +
-  geom_line(aes(temp, .fitted), preds.WT, col = 'gray') +
-  geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds.WT, fill = 'gray', alpha = 0.3) +
-  geom_point(aes(Temperature, ler_inverse), tpc.C, size = 2, alpha = 0.5,col = 'gray') +
-  theme_bw(base_size = 12) +
-    theme_classic()+
-  labs(x = 'Temperature (ºC)',
-       y = 'LER (nmol O2/larva/min)', 
-       title = "TPC: WT");CI.plot.WT
-
-```
-
-Print parameters 
-```{r}
-# calculate additional traits
-calc_params(fit.WT) %>%
-  # round for easy viewing
-  mutate_all(round, 2)
-```
-
-## Print all parameters together 
-
-Wildtype
-```{r}
-# calculate additional traits
-calc_params(fit.WT) %>%
-  # round for easy viewing
-  mutate_all(round, 3)
-```
-
-Mixed 
-```{r}
-# calculate additional traits
-calc_params(fit.MIX) %>%
-  # round for easy viewing
-  mutate_all(round, 3)
-```
-
-Cladocopium
-```{r}
-# calculate additional traits
-calc_params(fit.C) %>%
-  # round for easy viewing
-  mutate_all(round, 3)
-```
-
-## Show all plots together 
-
-```{r}
-CI.plot.C
-CI.plot.MIX
-CI.plot.WT
-```
-
-```{r}
-TPCs<-plot_grid(CI.plot.C, CI.plot.MIX, CI.plot.WT, nrow=1, ncol=3, align="vh")
-
-ggsave("figures/temp_pi_curves/TPCs.png", TPCs, width=14, height=5, dpi=300)
-```
-
-## Plot TPC parameters
-
-```{r}
-#set plot colors
-cols <- c("C"="orange", "MIX"="brown4", "WT"="gray")
+model_poc_ratio<-pr_data %>%
+    filter(Species=="Pocillopora")%>%
+    select(Species, PAR, Temperature, P.nmol.org.min, unique)%>%
+    pivot_wider(names_from=PAR, values_from=P.nmol.org.min)%>%
+    mutate(`0`=`0`*-1)%>%
+    mutate(ratio=`150`/`0`)%>%
   
-# plot data and model fit
-TPC.plot <- ggplot(data=tpc, aes(x=Temperature)) +
-   
-   geom_point(aes(x=Temperature, y=ler_inverse, color="C"), data=tpc.C, size = 2, alpha = 0.5) +
-   geom_point(aes(x=Temperature, y=ler_inverse, color="MIX"), data=tpc.MIX, size = 2, alpha = 0.5) +
-   geom_point(aes(x=Temperature, y=ler_inverse, color="WT"), data=tpc.WT, size = 2, alpha = 0.5) +
-   
-   geom_line(aes(temp, .fitted), preds.C, col = 'orange', size=2) +
-   geom_line(aes(temp, .fitted), preds.MIX, col = "brown4", size=2) +
-   geom_line(aes(temp, .fitted), preds.WT, col = "gray", size=2) +
-   geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds.C, fill = "orange", alpha = 0.3) +
-   geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds.MIX, fill = 'brown4', alpha = 0.3) +
-   geom_ribbon(aes(temp, ymin = conf_lower, ymax = conf_upper), boot_conf_preds.WT, fill = "gray", alpha = 0.3) +
-   #xlim(21,33)+
-   #scale_x_continuous(breaks=c(13,23,26,28,32,35,37,40))+
-   theme_bw(base_size = 12) +
-   theme_classic()+
-   scale_colour_manual(name="Symbiont",values=cols)+
-   theme(legend.position = "right",
-         panel.border = element_blank(), panel.grid.major = element_blank(),
-         panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+
-   labs(x = 'Temperature (ºC)',
-        y = expression("LER"~nmol~O[2] ~larva^{-1}~min^{-1}));TPC.plot 
+    aov(ratio~Temperature, data=.)
 
-ggsave("figures/temp_pi_curves/TPC_AllTypes.png", TPC.plot, dpi=300, w=8, h=8, units="in")
+summary(model_poc_ratio)
 
-```
-
-## Confidence intervals of TPC parameters   
-
-```{r}
-broom::tidy(fit_nlsLM.C)
-broom::tidy(fit_nlsLM.MIX)
-broom::tidy(fit_nlsLM.WT)
-```
-
-Cladocopium parameters
-```{r}
-#Cladocopium
-#calculate all the TPC parameters
-C.extra_params <- calc_params(fit_nlsLM.C) %>%
-  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
-
-#calculate CIs for all the TPC parameters
-C.ci_extra_params <- Boot(fit_nlsLM.C, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM.C)), R = 200, method = 'case') %>%
-  confint(., method = 'bca') %>%
-  as.data.frame() %>%
-  dplyr::rename(conf_lower = 1, conf_upper = 2) %>%
-  rownames_to_column(., var = 'param') %>%
-  mutate(method = 'case bootstrap')
-
-#join the parameters and CIs  
-C.ci_extra_params <- left_join(C.ci_extra_params, C.extra_params)
-C.ci_extra_params$Symbiont <- "Cladocopium"
-```
-
-Mixed parameters 
-```{r}
-#Mix
-#calculate all the TPC parameters
-MIX.extra_params <- calc_params(fit_nlsLM.MIX) %>%
-  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
-
-#calculate CIs for all the TPC parameters
-MIX.ci_extra_params <- Boot(fit_nlsLM.MIX, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM.MIX)), R = 200, method = 'case') %>%
-  confint(., method = 'bca') %>%
-  as.data.frame() %>%
-  dplyr::rename(conf_lower = 1, conf_upper = 2) %>%
-  rownames_to_column(., var = 'param') %>%
-  mutate(method = 'case bootstrap')
+emm<-emmeans(model_poc_ratio, ~Temperature)
+pairs(emm)
   
-#join the parameters and CIs  
-MIX.ci_extra_params <- left_join(MIX.ci_extra_params, MIX.extra_params)
-MIX.ci_extra_params$Symbiont <- "Mixed"
 ```
-
-Wildtype parameters 
-```{r}
-#Mix
-#calculate all the TPC parameters
-WT.extra_params <- calc_params(fit_nlsLM.WT) %>%
-  pivot_longer(everything(), names_to =  'param', values_to = 'estimate')
-
-#calculate CIs for all the TPC parameters
-WT.ci_extra_params <- Boot(fit_nlsLM.WT, f = function(x){unlist(calc_params(x))}, labels = names(calc_params(fit_nlsLM.WT)), R = 200, method = 'case') %>%
-  confint(., method = 'bca') %>%
-  as.data.frame() %>%
-  dplyr::rename(conf_lower = 1, conf_upper = 2) %>%
-  rownames_to_column(., var = 'param') %>%
-  mutate(method = 'case bootstrap')
-  
-#join the parameters and CIs  
-WT.ci_extra_params <- left_join(WT.ci_extra_params, WT.extra_params)
-WT.ci_extra_params$Symbiont <- "Wildtype"
-```
-
-```{r}
-#Join 
-All_params <- rbind(C.ci_extra_params, MIX.ci_extra_params)
-All_params <- rbind(All_params, WT.ci_extra_params)
-
-All_params <- All_params %>% 
- mutate_if(is.numeric, round, 3)
-
-#Plot all of the estimates
-estimate.plots <- ggplot(All_params, aes(Symbiont, estimate, color=Symbiont)) +
-  geom_point(size = 2) +
-  scale_color_manual(name="Symbiont", values=c("orange","brown4", "gray"))+
-  geom_linerange(aes(ymin = conf_lower, ymax = conf_upper)) +
-  theme_classic() +
-  facet_wrap(~param, scales = 'free_y') +
-  scale_x_discrete('')+
-  theme_classic();estimate.plots
-
-ggsave("figures/temp_pi_curves/TPC_estimates.png", estimate.plots, dpi=300, w=8, h=8, units="in")
-``` 
-
-View specific values.
-```{r}
-All_params%>%
-  filter(param=="ctmax")
-
-All_params%>%
-  filter(param=="thermal_safety_margin")
-
-All_params%>%
-  filter(param=="thermal_tolerance")
-```
-
-
-
+Effect of temperature on PR ratios. Lower at 31.5 than ambient. 
