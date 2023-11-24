@@ -25,14 +25,12 @@ sa <- read.csv("output/physiology/surface_area/surface_area.csv")
 homog_vols <- read_csv("data/physiology/homog_vols.csv") %>% select(sample_id, total_slurry_ml, sym_vol_ml, host_vol_ml, resuspended_sym_vol_ml)
 
 # Coral sample metadata
-metadata <- read_csv("data/p_r_rates/pr_sample_metadata.csv") %>% select(sample_id, Species, Lifestage) %>% filter(!str_detect(sample_id, "^BK"))
+metadata <- read_csv("data/p_r_rates/pr_sample_metadata.csv") %>% select(sample_id, Species, Lifestage, Temp.Cat) %>% filter(!str_detect(sample_id, "^BK"))
 
 # Join homogenate volumes and surface area with sample metadata
 metadata <- full_join(metadata, homog_vols) %>%
   full_join(sa) %>% filter(!is.na(Species))
 ```
-
-
 
 
 # Calculate cells per square centimeter
@@ -52,39 +50,32 @@ sym_counts <- full_join(sym_counts, metadata)
 # sym aliquot volume = total tissue from which cells were taken
 # sym resuspended volume = dilution of cells from total pellet 
 
-#cells per mL = count * 10000 / squares counted 
+#count * 10000 / squares counted = cells per ml
+#cells per ml * resuspended volume = total cells in aliquot
+#total cells in slurry = total cells * (total slurry / aliquot volume)
+# cells per unit sa = total cells in slurry / sa 
 
+# Normalize counts by homogenate volume and surface area
 
-
-
-
-
-
-# Normalize counts by homogenat volume and surface area
 sym_counts <- sym_counts %>%
-  mutate(cells.mL = mean_count * 10000 / squares_counted,
-         cells = cells.mL * homog_vol_ml,
-         cells.cm2 = cells / surface.area.cm2)
+  mutate(cells.ml = mean_count * 10000 / squares_counted,
+         aliquot.cells = cells.ml * resuspended_sym_vol_ml, 
+         total.cells = aliquot.cells * (total_slurry_ml/sym_vol_ml),
+         cells.cm2 = total.cells / surface.area.cm2)
 ```
-
-
-
-
-
-
-
 
 # Plot data
 ```{r}
 sym_counts %>%
-  filter(!is.na(site)) %>%
-  ggplot(aes(x = site, y = cells.cm2 / 10^6, color = species)) +
+
+  ggplot(aes(x = Lifestage, y = cells.cm2 / 10^6), colour=as.factor(Temp.Cat)) +
   labs(x = "",y = "Cell Density (Cells/cm2 * 10^6)") +
-  facet_wrap(~ species) +
-geom_jitter(width = 0.1) +                                            # Plot all points
+  facet_wrap(~ Species) +
+  geom_jitter(aes(colour=as.factor(Temp.Cat)),width = 0.1) +                                            # Plot all points
   stat_summary(fun.data = mean_cl_normal, fun.args = list(mult = 1),    # Plot standard error
-               geom = "errorbar", color = "black", width = 0.5) +
-  stat_summary(fun.y = mean, geom = "point", color = "black")           # Plot mean
+               geom = "errorbar", color = "black", width = 0.1) +
+  stat_summary(fun = mean, geom = "point", color = "black")+
+  theme_classic()# Plot mean
 ```
 
 
