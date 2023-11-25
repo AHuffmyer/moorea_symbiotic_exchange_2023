@@ -276,7 +276,7 @@ summary(model4)
 emm<-emmeans(model4, ~Lifestage | Species)
 pairs(emm)
 ```
-Effect of species and lifestage on P normalized to per cell rates. Recruits look higher than adults. Particularly in POC.  
+Effect of species and lifestage on P normalized to per cell rates. Recruits look higher than adults. Particularly in POC. No strong temperature effects. 
 
 ## LEDR per cell 
 
