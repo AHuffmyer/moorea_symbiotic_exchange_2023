@@ -102,7 +102,7 @@ plot1<-sym_counts %>%
     geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
     geom_point(aes(group=Lifestage), size=6, position = position_dodge(0.4), color="darkgray") + 
     geom_errorbar(aes(ymin=(mean/ 10^6)-(se/ 10^6), ymax=(mean/ 10^6)+(se/ 10^6), group=Lifestage), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Temperature") + 
+    xlab("Lifestage") + 
     ylab(expression(bold(paste("Cell Density (10"^6, "cells cm"^-2, ")")))) +
     ggtitle("")+
     theme_classic() + 
@@ -115,7 +115,7 @@ plot1<-sym_counts %>%
       title = element_text(size=14, face="bold")
       ); plot1
 
-ggsave("figures/physiology/cell_density/cells_means.png", plot1, dpi=300, w=4, h=4, units="in")
+ggsave("figures/physiology/cell_density/cells_means.png", plot1, dpi=300, w=6, h=4, units="in")
 ```
 
 Plot by individual observation with colour by temperature exposure. 
@@ -127,7 +127,7 @@ plot2<-sym_counts %>%
     facet_grid(~Species)+
     geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
     geom_point(aes(group=Lifestage), size=3, position = position_jitterdodge(0.5)) + 
-    xlab("Temperature") + 
+    xlab("Lifestage") + 
     ylab(expression(bold(paste("Cell Density (10"^6, "cells cm"^-2, ")")))) +
     scale_color_manual(values=c("blue2", "orange", "red3"))+
     ggtitle("")+
@@ -141,7 +141,7 @@ plot2<-sym_counts %>%
       title = element_text(size=14, face="bold")
       ); plot2
 
-ggsave("figures/physiology/cell_density/cells_dots.png", plot2, dpi=300, w=4, h=4, units="in")
+ggsave("figures/physiology/cell_density/cells_dots.png", plot2, dpi=300, w=6, h=4, units="in")
 ```
 
 # Run ANOVA tests 
