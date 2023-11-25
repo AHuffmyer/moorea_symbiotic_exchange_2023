@@ -83,19 +83,10 @@ Generate final figures
 
 Plot with mean and standard error by lifestage and species. 
 ```{r}
-
-# Calculate the number of rows including NAs
-rows_with_na <- nrow(sym_counts)
-print(rows_with_na)  # Output: 4
-
-# Calculate the number of rows excluding NAs
-rows_without_na <- length(na.omit(sym_counts$cells.cm2))
-
-print(rows_without_na)  # Output: 3
-
 plot1<-sym_counts %>%
+    filter(!is.na(cells.cm2))%>%
     group_by(Species, Lifestage)%>%
-    dplyr::summarise(mean=mean(cells.cm2, na.rm=TRUE), sd=sd(cells.cm2, na.rm=TRUE), N=length(na.omit(sym_counts$cells.cm2)), se=sd/sqrt(N))%>%
+    dplyr::summarise(mean=mean(cells.cm2, na.rm=TRUE), sd=sd(cells.cm2, na.rm=TRUE), N=length(cells.cm2), se=sd/sqrt(N))%>%
     
     ggplot(., aes(x = Lifestage, y = mean / 10^6, group=Lifestage)) +
     facet_grid(~Species)+
@@ -121,6 +112,7 @@ ggsave("figures/physiology/cell_density/cells_means.png", plot1, dpi=300, w=6, h
 Plot by individual observation with colour by temperature exposure. 
 ```{r}
 plot2<-sym_counts %>%
+    filter(!is.na(cells.cm2))%>%
     mutate(Temp.Cat=as.factor(Temp.Cat))%>%
     
     ggplot(., aes(x = Lifestage, y = cells.cm2 / 10^6, group=Lifestage, color=Temp.Cat)) +
@@ -169,6 +161,52 @@ pairs(emm)
 There is an interaction of species and lifestage and each on its own. 
 
 Recruits have lower cell density than adults in POC and POR species. No difference in Acropora. 
+
+# Plot recruit symbiont density as a function of size. 
+
+```{r}
+plot3<-sym_counts %>%
+    filter(!is.na(cells.cm2))%>%
+    mutate(Temp.Cat=as.factor(Temp.Cat))%>%
+    filter(Lifestage=="Recruit")%>%
+    
+    ggplot(., aes(x = surface.area.cm2, y = cells.cm2 / 10^6, group=Lifestage)) +
+    facet_grid(~Species, scales="free_x")+
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Lifestage), size=3) + 
+    xlab("Surface Area") + 
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells cm"^-2, ")")))) +
+    #scale_color_manual(values=c("blue2", "orange", "red3"))+
+    geom_smooth(method="lm", colour="darkgray", se=FALSE, linewidth=1)+
+    ggtitle("")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); plot3
+
+ggsave("figures/physiology/cell_density/cells_size.png", plot3, dpi=300, w=6, h=4, units="in")
+```
+
+Run analysis 
+```{r}
+model3<-sym_counts %>%
+    filter(!is.na(cells.cm2))%>%
+    mutate(Temp.Cat=as.factor(Temp.Cat))%>%
+    filter(Lifestage=="Recruit")%>%
+  
+    aov(cells.cm2~surface.area.cm2*Species, data=.)
+
+summary(model3)
+```
+
+Significant relationship between cell density and recruit size for each species. Difference in cell density between species. 
+
+# Output files
 
 Output data to file.  
 
