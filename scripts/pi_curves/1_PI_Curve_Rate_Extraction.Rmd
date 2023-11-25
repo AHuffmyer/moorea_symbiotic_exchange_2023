@@ -285,5 +285,5 @@ pr.out <- pr %>%
 length(unique(pr.out$sample_id))
 
 # Write to output file
-write.csv(pr.out, "output/pi_curve_extracted_rates.csv")
+write.csv(pr.out, "output/pi_curves/pi_curve_extracted_rates.csv")
 ```

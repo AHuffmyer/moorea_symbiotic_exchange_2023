@@ -42,7 +42,7 @@ library(furrr)
 
 ```{r} 
 #specify data 
-Data<-read_csv(here("output/","pi_curve_extracted_rates.csv"))
+Data<-read_csv(here("output/pi_curves/","pi_curve_extracted_rates.csv"))
 
 Data$PAR <- as.numeric(Data$Light_Value.x) 
 Data$Pc <- as.numeric(Data$micromol.cm2.s) 
@@ -58,7 +58,8 @@ ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species))+
   geom_point()+
   geom_line()+
   facet_wrap(~ sample_id,  ncol = 10)+
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  theme_classic()
 
 ggsave("figures/pi_curves/pi_curve_raw_plots_bycoral.png",raw.plot,  width = 10, height=6)
 
@@ -67,16 +68,18 @@ ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species))+
   geom_point()+
   geom_line()+
   facet_wrap(~ Species * Lifestage,  ncol = 2)+
-  theme(legend.position = "none")
+    theme_classic()+
+  theme(legend.position="none")
 
-ggsave("figures/pi_curves/pi_curve_raw_plots_groups.png",raw.plot.2,  width = 10, height=6)
+ggsave("figures/pi_curves/pi_curve_raw_plots_groups.png",raw.plot.2,  width = 8, height=8)
 
 raw.plot.3 <- Data %>% 
 ggplot(aes(x=PAR, y=Pc, color=Species, group=sample_id, fill=Species, linetype=Lifestage))+ 
   geom_point()+
   geom_line()+
   facet_wrap(~ Species,  ncol = 3)+
-  theme(legend.position = "none")
+  theme(legend.position = "none")+
+  theme_classic()
 
 ggsave("figures/pi_curves/pi_curve_raw_plots_species.png",raw.plot.3,  width = 10, height=6)
 
@@ -97,7 +100,7 @@ ggplot(aes(x=Temp.Cat.x, y=-Rd, color=Species, group=Species, fill=Species, shap
   theme_classic()+
   theme(legend.position = "none"); dirty.tpc.plot.Rd  
 
-ggsave("figures/pi_curves/rd_dirty_estimates.png",dirty.tpc.plot.Rd,  width = 10, height=6)
+#ggsave("figures/pi_curves/rd_dirty_estimates.png",dirty.tpc.plot.Rd,  width = 10, height=6)
 
 dirty.tpc.plot.Pmax <- ests %>% 
 ggplot(aes(x=Temp.Cat.x, y=Pmax, color=Species, group=Species, fill=Species, shape=Lifestage))+ 
@@ -107,7 +110,7 @@ ggplot(aes(x=Temp.Cat.x, y=Pmax, color=Species, group=Species, fill=Species, sha
   theme(legend.position = "none")+
   theme_classic(); dirty.tpc.plot.Pmax 
 
-ggsave("figures/pi_curves/pmax_dirty_estimates.png",dirty.tpc.plot.Pmax,  width = 10, height=6)
+#ggsave("figures/pi_curves/pmax_dirty_estimates.png",dirty.tpc.plot.Pmax,  width = 10, height=6)
 
 ``` 
 
@@ -258,12 +261,11 @@ PI.params <- df %>%
   ggplot(aes(x = Species, y = value, colour=Lifestage)) + 
   facet_wrap(~variable, scales="free_y")+
   geom_point(position=position_jitterdodge(0.1))+
-  scale_colour_manual(values=c("black", "orange"))+ 
+  #scale_colour_manual(values=c("black", "orange"))+ 
   theme_classic()+ 
-  theme(legend.position="right")+ 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1));PI.params 
+  theme(legend.position="right");PI.params 
 
-ggsave("figures/pi_curves/PI_parameters_untransformed.jpeg", PI.params, dpi=300, w=8, h=8, units="in") 
+#ggsave("figures/pi_curves/PI_parameters_untransformed.jpeg", PI.params, dpi=300, w=11, h=8, units="in") 
 ``` 
 
 Load rate data and metadata 
@@ -293,9 +295,9 @@ values_plot_transformed<-df %>%
     filter(value>-5)%>%
     ggplot(., aes(x = Species, y = value, colour=Lifestage, fill=Lifestage)) + 
     geom_point(aes(fill=Lifestage, group=Lifestage), pch = 19, size=2, alpha=1, position=position_dodge(0.3)) +  
-    xlab("Temperature") +  
-    scale_fill_manual(values=c("black", "orange"))+
-   scale_colour_manual(values=c("black", "orange"))+
+    xlab("Species") +  
+    #scale_fill_manual(values=c("black", "orange"))+
+   #scale_colour_manual(values=c("black", "orange"))+
     facet_wrap(vars(variable), scales = "free_y", nrow = 2, strip.position = "top") + 
     theme_classic() +  
     theme(legend.position="right", 
@@ -304,7 +306,7 @@ values_plot_transformed<-df %>%
       legend.title=element_text(face="bold", size=14),  
       legend.text=element_text(size=12)); values_plot_transformed 
 
-ggsave("figures/pi_curves/PI_parameters_transformed.jpeg", values_plot_transformed, dpi=300, w=8, h=8, units="in") 
+ggsave("figures/pi_curves/PI_parameters_transformed.jpeg", values_plot_transformed, dpi=300, w=11, h=8, units="in") 
 ``` 
 
 # ANOVA tests 
@@ -320,44 +322,49 @@ model1<-df%>%
 
 summary(model1)
 ```
+Am different by species and lifestage. 
 
-Rd
+
+LEDR
 ```{r}
-model1<-df%>%
+model2<-df%>%
   filter(variable=="Rd.log10")%>%
   
   aov(value ~ Species * Lifestage, data=.)
 
-summary(model1)
+summary(model2)
 ```
+LEDR different by species and lifestage. 
 
 AQY
 ```{r}
-model1<-df%>%
+model3<-df%>%
   filter(variable=="AQY.log10")%>%
   
   aov(value ~ Species * Lifestage, data=.)
 
-summary(model1)
+summary(model3)
 ```
+AQY different by species. 
 
 Ik
 ```{r}
-model1<-df%>%
+model4<-df%>%
   filter(variable=="Ik.log10")%>%
   
   aov(value ~ Species * Lifestage, data=.)
 
-summary(model1)
+summary(model4)
 ```
+Ik different by lifestage. 
 
 Ic
 ```{r}
-model1<-df%>%
+model5<-df%>%
   filter(variable=="Ic.log10")%>%
   
   aov(value ~ Species * Lifestage, data=.)
 
-summary(model1)
+summary(model5)
 ```
-
+Ic different by lifestage. 
