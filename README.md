@@ -6,6 +6,7 @@ Ariana S Huffmyer
 Hollie Putnam  
 Pierrick Harnay  
 Chloe Gilligan  
+Lucy Gorman  
 
 ### This repository contains directories with all data, code, metadata, and protocols for this project. 
 
@@ -19,12 +20,6 @@ ashuffmyer@uri.edu
 3. Figures: Contains figures produced through scripts in the Code folder. 
 4. Output: Contains data summaries or data generated from scripts in the Code folder. 
 5. Protocols: Contains documents with protocols for each proceedure.  
-
-# Project Overview
-
-A visual overview of this project can be found below. 
-
-![](https://github.com/AHuffmyer/ASH_Putnam_Lab_Notebook/blob/master/images/NotebookImages/Moorea2023/Moorea_design_v2.png?raw=true)  
 
 # Online Lab Notebook 
 
