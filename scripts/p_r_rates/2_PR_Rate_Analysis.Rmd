@@ -151,6 +151,7 @@ summary(model1)
 emm<-emmeans(model1, ~Lifestage | Species)
 pairs(emm)
 ```
+P max is lower in POR recruits than adults. No difference in other species. 
 
 LEDR
 ```{r}
@@ -160,6 +161,7 @@ summary(model2)
 emm<-emmeans(model2, ~Lifestage | Species)
 pairs(emm)
 ```
+LEDR is higher in POR adults than recruits but not different between other species. 
 
 There is a lifestage x species effect for both LEDR and P. 
 
@@ -205,10 +207,10 @@ ggsave("figures/p_r_rates/P_LEDR_correlation.png", corr1, width = 6, height = 4)
 
 There is a strong correlation between LEDR and P. 
 ```{r}
-model3<-lm(P~LEDR*Species, data=pr_wide)
+model3<-aov(P~LEDR*Species, data=pr_wide)
 summary(model3)
 ```
-The relationship between P and LEDR is strong but not different between species. 
+The relationship between P and LEDR is strong and the relationship is different between species. 
 
 # View P and LEDR normalized to symbiont cell density 
 
@@ -276,7 +278,7 @@ summary(model4)
 emm<-emmeans(model4, ~Lifestage | Species)
 pairs(emm)
 ```
-Effect of species and lifestage on P normalized to per cell rates. Recruits look higher than adults. Particularly in POC. No strong temperature effects. 
+Effect of species and lifestage on P normalized to per cell rates. Recruits look higher than adults. Particularly in POC. No strong temperature effects. Species x lifestage is significant - the difference between lifestages is different by species. 
 
 ## LEDR per cell 
 
