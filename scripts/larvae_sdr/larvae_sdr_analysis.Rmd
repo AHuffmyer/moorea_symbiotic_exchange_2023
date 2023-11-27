@@ -126,7 +126,7 @@ pr_data<-pr_data%>%
 pr_data$Temperature
 ```
 
-Reorder factor.  EDIT AS NEEDED 
+Reorder factor. 
 ```{r}
 pr_data$PAR<-as.factor(pr_data$PAR)
 pr_data$PAR
@@ -134,192 +134,65 @@ pr_data$Light<-as.factor(pr_data$Light)
 pr_data$Light
 ```
 
-# Plot and analyze ACR
+# Calculate P gross and PR ratio metrics 
 
-Plot data with means 
+```{r}
+pr_data<-pr_data%>%
+  select(Temperature, Species, unique, PAR, P.nmol.org.min)%>%
+  pivot_wider(names_from=PAR, values_from=P.nmol.org.min)%>%
+  rename(LEDR=`0`, Pnet=`150`)%>%
+  mutate(LEDR=if_else(LEDR>0, 0, LEDR))%>% #if no oxygen consumption was observed, add 0 for respiration value
+  mutate(LEDR=LEDR*-1)%>%
+  mutate(Pgross=Pnet+LEDR)%>%
+  mutate(Temperature=as.factor(Temperature))%>%
+  mutate(Pgross=if_else(Pgross<0, 0, Pgross)) %>%
+  mutate(PR_ratio=Pgross/LEDR)%>%
+  mutate(PR_ratio=if_else(is.nan(PR_ratio), 0, PR_ratio))
+```
+
+# Calculate metrics normalized to average larval size 
+
+For now, add a manual dummy value assuming Acropora are 10x larger than Pocillopora. 
+```{r}
+pr_data<-pr_data%>%
+  mutate(size=if_else(Species=="Acropora", 1, 
+                       if_else(Species=="Pocillopora", 0.1, NA)))%>% #normalize to size for POC and ACR dummy values
+  mutate(LEDR_size=LEDR/size, Pnet_size=Pnet/size, Pgross_size=Pgross/size)
+```
+
+Prepare long data frame. 
+```{r}
+pr_long<-pr_data %>%
+      mutate(PR_ratio=if_else(is.infinite(PR_ratio), NA, PR_ratio))%>%
+    pivot_longer(names_to = "Metric", values_to = "Value", cols=c(Pnet, LEDR, Pgross, PR_ratio, Pnet_size, LEDR_size, Pgross_size))%>%
+  select(Temperature, Species, unique, Metric, Value)
+```
 
 Remove well 3-B1 - respiration rates were weird in the light (but worked in the dark). So remove for now and we can come back and replace the light period with the dark period as this sample did not reach oxygen depletion. 
 ```{r}
-pr_data<-pr_data%>%
+pr_long<-pr_long%>%
   filter(!unique=="3 - B1")
 ```
 
-Acropora. 
+Plot respiration rates for ACR only at 150 PAR. This is where respiration is taking place. By the time we get to the dark portion of the run oxygen is depleted and rates decrease. POC rates taken from 0 PAR portion of the run. 
 
-Plot respiration rates only at 150 PAR. This is where respiration is taking place. By the time we get to the dark portion of the run oxygen is depleted and rates decrease. 
+# LEDR
+
+Visualize means
 ```{r}
-pi_temp_plot1<-pr_data %>%
-    filter(Species=="Acropora")%>%
-    filter(PAR=="150")%>%
-    group_by(PAR, Species, Temperature)%>%
-    mutate(Temperature=as.factor(Temperature))%>%
-    dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
-    
-    ggplot(., aes(x = Temperature, y = -1*mean, group=interaction(PAR, Temperature))) +
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(PAR, Temperature), colour=Temperature), size=6, position = position_dodge(0.4)) + 
-    geom_errorbar(aes(ymin=(-1*mean)-se, ymax=(-1*mean)+se, group=interaction(PAR, Temperature)), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Temperature (°C)") + 
-    ylab(expression(bold(paste("R (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    #ylim(0, 0.05)+
-    ggtitle("Acropora")+
-    theme_classic() + 
-    theme(
-      legend.position="none",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12), 
-      title = element_text(size=14, face="bold")
-      ); pi_temp_plot1
-
-ggsave("figures/larvae_sdr/R_means_acr.png", pi_temp_plot1, dpi=300, w=4, h=4, units="in")
-```
-
-Plot with individual data points. 
-```{r}
-pi_temp_plot2<-pr_data %>%
-    filter(Species=="Acropora")%>%
-    filter(PAR=="150")%>%
-    group_by(PAR, Species, Temperature)%>%
-    mutate(Temperature=as.factor(Temperature))%>%
-    
-    ggplot(., aes(x = Temperature, y = -1*P.nmol.org.min, group=interaction(PAR, Temperature))) +
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=interaction(PAR, Temperature), colour=Temperature), size=3, position = position_jitterdodge(0.4)) + 
-    xlab("Temperature (°C)") + 
-    ylab(expression(bold(paste("R (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    #ylim(0, 0.05)+
-    #geom_text(aes(label=unique))+
-    ggtitle("Acropora")+
-    theme_classic() + 
-    theme(
-      legend.position="none",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12), 
-      title = element_text(size=14, face="bold")
-      ); pi_temp_plot2
-
-ggsave("figures/larvae_sdr/pi_dots_acr.png", pi_temp_plot2, dpi=300, w=4, h=4, units="in")
-```
-
-# Plot and analyze POC
-
-Plot data with means 
-
-PAR 150 (light 1) = photosynthesis
-PAR 0 (light 2)= LEDR 
-```{r}
-pi_temp_plot3<-pr_data %>%
-    filter(Species=="Pocillopora")%>%
-    group_by(PAR, Species, Temperature)%>%
-    dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
+plots1<-pr_long%>%
+    group_by(Species, Metric, Temperature)%>%
+    filter(Metric %in% c("LEDR", "LEDR_size"))%>%
+    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
     
     ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    facet_grid(~PAR, scales="free_y")+
-    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
-    geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Temperature") + 
-    ylab(expression(bold(paste("Rate (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    #ylim(0, 0.05)+
-    ggtitle("Pocillopora")+
-    theme_classic() + 
-    theme(
-      legend.position="none",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12), 
-      title = element_text(size=14, face="bold")
-      ); pi_temp_plot3
-
-ggsave("figures/larvae_sdr/pi_means_poc.png", pi_temp_plot3, dpi=300, w=4, h=4, units="in")
-```
-
-Plot with individual data points. Outliers in R at ambient do not have any red flags - looks like true biological response.
-```{r}
-pi_temp_plot4<-pr_data %>%
-    filter(Species=="Pocillopora")%>%
-    group_by(PAR, Species, Temperature)%>%
-    mutate(Temperature=as.factor(Temperature))%>%
-    
-    ggplot(., aes(x = as.factor(PAR), y = P.nmol.org.min, group=Temperature)) +
-    facet_grid(~PAR, scales="free_y")+
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=Temperature, colour=Temperature), size=3, position = position_jitterdodge(0.4)) + 
-    xlab("Temperature (°C)") + 
-    ylab(expression(bold(paste("R (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    #ylim(0, 0.05)+
-    ggtitle("Pocillopora")+
-    theme_classic() + 
-    #geom_text(aes(label=unique))+
-    theme(
-      legend.position="none",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12), 
-      title = element_text(size=14, face="bold")
-      ); pi_temp_plot4
-
-ggsave("figures/larvae_sdr/pi_dots_poc.png", pi_temp_plot4, dpi=300, w=4, h=4, units="in")
-```
-
-Plot separate P and R plots for Pocillopora 
-
-```{r}
-pi_temp_plot5<-pr_data %>%
-    filter(Species=="Pocillopora")%>%
-    filter(PAR=="0")%>%
-    group_by(PAR, Species, Temperature)%>%
-    dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
-    
-    ggplot(., aes(x = Temperature, y = mean*-1, group=Temperature)) +
-    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
-    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
-    geom_errorbar(aes(ymin=(mean*-1)-se, ymax=(mean*-1)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Temperature") + 
-    ylab(expression(bold(paste("LEDR (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
-    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    #ylim(0, 0.05)+
-    ggtitle("Pocillopora")+
-    theme_classic() + 
-    theme(
-      legend.position="none",
-      axis.title=element_text(face="bold", size=16),
-      axis.text=element_text(size=12, color="black"), 
-      legend.title=element_text(face="bold", size=14), 
-      legend.text=element_text(size=12), 
-      title = element_text(size=14, face="bold")
-      ); pi_temp_plot5
-
-ggsave("figures/larvae_sdr/LEDR_means_poc.png", pi_temp_plot5, dpi=300, w=4, h=4, units="in")
-```
-
-
-```{r}
-pi_temp_plot6<-pr_data %>%
-    filter(Species=="Pocillopora")%>%
-    filter(PAR=="150")%>%
-    group_by(PAR, Species, Temperature)%>%
-    dplyr::summarise(mean=mean(P.nmol.org.min, na.rm=TRUE), sd=sd(P.nmol.org.min, na.rm=TRUE), N=length(P.nmol.org.min), se=sd/sqrt(N))%>%
-    
-    ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
+    facet_grid(~Species*Metric)+
     geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
     geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
     geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Temperature") + 
-    ylab(expression(bold(paste("P (nmol ", O[2], " larva"^-1, "min"^-1, ")")))) +
+    xlab(expression(bold("Temperature (°C)"))) +  
+    ylab(expression(bold(paste("LEDR (nmol ", O[2], " normalizer"^-1, "min"^-1, ")")))) +
     scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    ylim(0, 0.002)+
-    ggtitle("Pocillopora")+
     theme_classic() + 
     theme(
       legend.position="none",
@@ -328,32 +201,60 @@ pi_temp_plot6<-pr_data %>%
       legend.title=element_text(face="bold", size=14), 
       legend.text=element_text(size=12), 
       title = element_text(size=14, face="bold")
-      ); pi_temp_plot6
+      ); plots1
 
-ggsave("figures/larvae_sdr/P_means_poc.png", pi_temp_plot6, dpi=300, w=4, h=4, units="in")
+ggsave("figures/larvae_sdr/LEDR_means.png", plots1, dpi=300, w=7, h=4, units="in")
 ```
 
-## Plot PR ratio for Pocillopora 
-
+Run anova on individual normalized LEDR. 
 ```{r}
-pi_temp_plot7<-pr_data %>%
+model<-pr_long%>%
+  filter(Metric=="LEDR")%>%
+  aov(Value~Species*Temperature, data=.)
+
+summary(model)
+
+emm<-emmeans(model, ~Temperature | Species)
+pairs(emm)
+```
+Interactions of Species x Temperature on LEDR when individual normalized. 
+
+No temp effects on individual normalized LEDR in POC. Strong decrease in above ambient temperatures in LEDR in ACR. 
+
+Run anova on size normalized LEDR. 
+```{r}
+model<-pr_long%>%
+  filter(Metric=="LEDR_size")%>%
+  aov(Value~Species*Temperature, data=.)
+
+summary(model)
+
+emm<-emmeans(model, ~Temperature | Species)
+pairs(emm)
+```
+
+Interaction of species x temperature on size normalized data. But no main effect of species - they are similar rates when normalized to size. 
+
+No temperature differences in size normalized POC rates. Maintained decrease in LEDR in ACR normalized to size. 
+
+# Pgross (POC only)
+
+Visualize means
+```{r}
+plots2<-pr_long%>%
+    group_by(Species, Metric, Temperature)%>%
+    filter(Metric %in% c("Pgross", "Pgross_size"))%>%
     filter(Species=="Pocillopora")%>%
-    select(Species, PAR, Temperature, P.nmol.org.min, unique)%>%
-    pivot_wider(names_from=PAR, values_from=P.nmol.org.min)%>%
-    mutate(`0`=`0`*-1)%>%
-    mutate(ratio=`150`/`0`)%>%
-    group_by(Species, Temperature)%>%
-    dplyr::summarise(mean=mean(ratio, na.rm=TRUE), sd=sd(ratio, na.rm=TRUE), N=length(ratio), se=sd/sqrt(N))%>%
+    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
     
     ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
+    facet_grid(~Metric)+
     geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
     geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
     geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
-    xlab("Temperature") + 
-    ylab(expression(bold(paste("P:LEDR Ratio")))) +
+    xlab(expression(bold("Temperature (°C)"))) +  
+    ylab(expression(bold(paste(P[Gross], " (nmol ", O[2], " normalizer"^-1, "min"^-1, ")")))) +
     scale_colour_manual(values=c("blue3", "orange", "darkred"))+
-    #ylim(0, 0.05)+
-    ggtitle("Pocillopora")+
     theme_classic() + 
     theme(
       legend.position="none",
@@ -362,96 +263,130 @@ pi_temp_plot7<-pr_data %>%
       legend.title=element_text(face="bold", size=14), 
       legend.text=element_text(size=12), 
       title = element_text(size=14, face="bold")
-      ); pi_temp_plot7
+      ); plots2
 
-ggsave("figures/larvae_sdr/PR_ratio_means_poc.png", pi_temp_plot7, dpi=300, w=4, h=4, units="in")
+ggsave("figures/larvae_sdr/Pgross_means.png", plots2, dpi=300, w=4, h=4, units="in")
 ```
 
-# Panel of PR plots of both species 
-
+Run anova on individual normalized Pgross.  
 ```{r}
-panel<-plot_grid(pi_temp_plot1, pi_temp_plot5, pi_temp_plot6, pi_temp_plot7, ncol=4, nrow=1)
-
-ggsave("figures/larvae_sdr/all_PR_panel.png", panel, dpi=300, w=16, h=4, units="in")
-```
-
-
-# Conduct anova test 
-
-Run anova on values at each temperature
-```{r}
-model<-pr_data%>%
-  aov(P.nmol.org.min~PAR*Species*Temperature, data=.)
+model<-pr_long%>%
+  filter(Species=="Pocillopora")%>%
+  filter(Metric=="Pgross")%>%
+  aov(Value~Temperature, data=.)
 
 summary(model)
 ```
-Interactions of PAR x Species x Temperature. 
+No effect of temp on P gross in POC. 
 
-Subset analysis for each species 
-
-ACR respiration: 
+Run anova on size normalized P gross.  
 ```{r}
-model_acr<-pr_data%>%
-  filter(Species=="Acropora")%>%
-  filter(PAR=="150")%>%
-  aov(P.nmol.org.min~Temperature, data=.)
+model<-pr_long%>%
+  filter(Metric=="Pgross_size")%>%
+  aov(Value~Temperature, data=.)
 
-summary(model_acr)
-
-emm<-emmeans(model_acr, ~Temperature)
-pairs(emm)
-
+summary(model)
 ```
+No temperature differences in size normalized POC rates.
 
-Strong efffect of temperature on ACR respiration. 31.5 respiration is lower than that at other temperatures. 28.4 and 29.4 are not different. 
+No effects seem to be due to POC variation at ambient - look into this. Difference between 29.4 and 31.5 are very strong. 
 
-POC respiration: 
+# Pnet (POC only)
+
+Visualize means
 ```{r}
-model_poc_r<-pr_data%>%
-  filter(Species=="Pocillopora")%>%
-  filter(PAR=="0")%>%
-  aov(P.nmol.org.min~Temperature, data=.)
-
-summary(model_poc_r)
-
-emm<-emmeans(model_poc_r, ~Temperature)
-pairs(emm)
-
-```
-
-No effect of temperature on LEDR in Pocillopora - likely driven by variability in ambient group. 
-
-POC photosynthesis: 
-```{r}
-model_poc_p<-pr_data%>%
-  filter(Species=="Pocillopora")%>%
-  filter(PAR=="150")%>%
-  aov(P.nmol.org.min~Temperature, data=.)
-
-summary(model_poc_p)
-
-emm<-emmeans(model_poc_p, ~Temperature)
-pairs(emm)
-
-```
-
-Temperature effects. Photosynthesis is lower at 31.5 than at 28.4. 
-
-POC PR ratio: 
-```{r}
-model_poc_ratio<-pr_data %>%
+plots3<-pr_long%>%
+    group_by(Species, Metric, Temperature)%>%
+    filter(Metric %in% c("Pnet", "Pnet_size"))%>%
     filter(Species=="Pocillopora")%>%
-    select(Species, PAR, Temperature, P.nmol.org.min, unique)%>%
-    pivot_wider(names_from=PAR, values_from=P.nmol.org.min)%>%
-    mutate(`0`=`0`*-1)%>%
-    mutate(ratio=`150`/`0`)%>%
-  
-    aov(ratio~Temperature, data=.)
+    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
+    facet_grid(~Metric)+
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab(expression(bold("Temperature (°C)"))) +  
+    ylab(expression(bold(paste(P[Net], " (nmol ", O[2], " normalizer"^-1, "min"^-1, ")")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); plots3
 
-summary(model_poc_ratio)
-
-emm<-emmeans(model_poc_ratio, ~Temperature)
-pairs(emm)
-  
+ggsave("figures/larvae_sdr/Pnet_means.png", plots3, dpi=300, w=4, h=4, units="in")
 ```
-Effect of temperature on PR ratios. Lower at 31.5 than ambient. 
+
+Run anova on individual normalized Pnet.  
+```{r}
+model<-pr_long%>%
+  filter(Species=="Pocillopora")%>%
+  filter(Metric=="Pnet")%>%
+  aov(Value~Temperature, data=.)
+
+summary(model)
+
+emm<-emmeans(model, ~Temperature)
+pairs(emm)
+```
+Effect of temp on P net. Lower at 31.5. 
+
+Run anova on size normalized P net  
+```{r}
+model<-pr_long%>%
+  filter(Metric=="Pnet_size")%>%
+  aov(Value~Temperature, data=.)
+
+summary(model)
+```
+No temperature differences in size normalized P net POC rates.
+
+# P:R ratio (POC only)
+
+Visualize means
+```{r}
+plots4<-pr_long%>%
+    group_by(Species, Metric, Temperature)%>%
+    filter(Metric %in% c("PR_ratio"))%>%
+    filter(Species=="Pocillopora")%>%
+    dplyr::summarise(mean=mean(Value, na.rm=TRUE), sd=sd(Value, na.rm=TRUE), N=length(Value), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Temperature, y = mean, group=Temperature)) +
+    facet_grid(~Metric)+
+    geom_hline(yintercept=1, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Temperature, colour=Temperature), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Temperature), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab(expression(bold("Temperature (°C)"))) +  
+    ylab(expression(bold(paste("P:R Ratio")))) +
+    scale_colour_manual(values=c("blue3", "orange", "darkred"))+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); plots4
+
+ggsave("figures/larvae_sdr/PR_ratio_means.png", plots4, dpi=300, w=4, h=4, units="in")
+```
+
+Run anova on PR ratios.  
+```{r}
+model<-pr_long%>%
+  filter(Species=="Pocillopora")%>%
+  filter(Metric=="PR_ratio")%>%
+  aov(Value~Temperature, data=.)
+
+summary(model)
+
+emm<-emmeans(model, ~Temperature)
+pairs(emm)
+```
+Effect of temp on PR ratios. Lower at 31.5. 
