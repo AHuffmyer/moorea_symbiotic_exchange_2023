@@ -140,7 +140,6 @@ df <- df %>%
     do(rankLcRg = fit_reg(.))
   }))
 
-#NEED TO ADD IN A LINE TO EXTRACT MEAN TEMPERATURE OF EACH LIGHT LEVEL
 # df <- df %>%
 #   mutate(regs = furrr::future_map(thin_data, function(.) {       # future_map executes function in parallel
 #     group_by(., Light_Value) %>%
@@ -163,32 +162,70 @@ plot_rankLcRg <- function(sample_id, interval_number) {
 ```{r}
 # Define function to pull out and plot regression diagnostics
 
-#THIS FUNCTION IS NOT WORKING BY COLONYID
 # pdf("output/Past-D1_test.pdf")
 plot_rankLcRg("ACR-A10", 1)
 plot_rankLcRg("ACR-A10", 2)
 plot_rankLcRg("POR-A12", 1)
 plot_rankLcRg("POR-A12", 2)
-# plot_rankLcRg("Past-D1", 3)
-# plot_rankLcRg("Past-D1", 4)
-# plot_rankLcRg("Past-D1", 5)
-# plot_rankLcRg("Past-D1", 6)
-# plot_rankLcRg("Past-D1", 7)
-# plot_rankLcRg("Past-D1", 8)
-# plot_rankLcRg("Past-D1", 9)
-# plot_rankLcRg("Past-D1", 10)
+
 # dev.off()
 ```
 
-
-DO THIS NEXT 
-
 Generate and export a diagnostic plot for each temperature and light level. 
-```{r}
+```{r, results=FALSE, warning=FALSE, message=FALSE}
 
+samples<-df$sample_id
+
+for(i in samples) { # for every sample in list start at the first and run this following function
+  
+    pdf(paste0("output/p_r_rates/RespirationPlots/", i, "_Light1", "_regression.pdf")) #generate output file names
+  
+    df %>%
+    filter(sample_id == i) %>%
+    pluck("regs", 1, "rankLcRg", 1) %>% # light level 1
+    plot()
+    
+    dev.off()
+}
+
+for(i in samples) { # for every sample in list start at the first and run this following function
+  
+    pdf(paste0("output/p_r_rates/PhotosynthesisPlots/", i, "_Light1", "_regression.pdf")) #generate output file names
+  
+    df %>%
+    filter(sample_id == i) %>%
+    pluck("regs", 1, "rankLcRg", 2) %>% #light level 2
+    plot()
+    
+    dev.off()
+}
 ```
 
+QC to resolve manually: 
 
+Photosynthesis/Light 1 
+
+- ACR-A13 is lower than actual - need to pull from later on in the interval to get a representative slope. 
+- ACR-R16 is not a representative slope - needs to pull from earlier in the interval. This one is an outlier on the plots. 
+- Blank1 is a little weird, not sure where to pull slope, check blanks
+- Blank4 is a little weird, not sure where to pull slope, check blanks
+- Blank5 is a little weird, not sure where to pull slope, check blanks
+- POC-R14 is not a representative slope - needs to pull from earlier in the interval. 
+- POC-R16 was a lot higher of a slope in the second half of the interval (double check if this is an outlier). This may be an outlier based on the plot. 
+- POC-R26 is also a bit weird at the start of the interval, may need to extract from latter part of the interval. Low on the plot. 
+- POR-A10 is not a representative slope - needs to pull from earlier in the interval perhaps? Low on the plot as an outlier. 
+- POR-R11 is not a representative slope - needs to pull from later in the interval? Low on plot/potential outlier. 
+- POR-R13 is not a representative slope - needs to pull from earlier in the interval. Outlier on plot. 
+- POR-R14 is not a representative slope - needs to pull from short time of proper increase in the middle of the interval - this had a probe error I believe. Outlier/low on the plot. 
+
+Respiration / Light 2
+- ACR-R16 is not representative, pull from either earlier or later in the interval. Outlier on plot as higher than others. 
+- ACR-R19 is not representative, pull from earlier in the interval. Also higher than other observations. 
+- Check magnitude of all blanks to double check 
+- POC-R14 is not representative, pull from either earlier or later in the interval. Outlier on plots, higher than others. 
+- POC-R26 needs to be pulled from slightly later in the interval. Outlier on plots, higher than others. 
+- POR-A10 needs to be pulled from slightly later in the interval. Outlier on plots, higher than others.  
+- POR-R13 is not representative, needs to be pulled from earlier or later in the interval. Outlier on plots, higher than others. 
 
 ### Extract slope of best regression for each interval for each sample
 ```{r}
@@ -229,7 +266,6 @@ pr <-distinct(pr)
 # Write raw data to output file
 write.csv(pr, "output/p_r_rates/pr_curve_extracted_rates_Raw.csv")
 ```
-
 
 # Adjust rates by chamber volume, subtract blank, and normalize to surface area
 ```{r}
