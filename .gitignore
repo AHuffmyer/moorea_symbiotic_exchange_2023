@@ -56,4 +56,6 @@ photos/
 
 #photosynthesis rate plots
 output/larvae_sdr/PhotosynthesisPlots
+output/p_r_rates/PhotosynthesisPlots
+output/p_r_rates/RespirationPlots
 
