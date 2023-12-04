@@ -158,7 +158,7 @@ emm<-emmeans(model2, ~Lifestage | Species)
 pairs(emm)
 ```
 
-There is an interaction of species and lifestage and each on its own. 
+There is an effect of species and lifestage.  
 
 Recruits have lower cell density than adults in POC and POR species. No difference in Acropora. 
 
@@ -204,7 +204,9 @@ model3<-sym_counts %>%
 summary(model3)
 ```
 
-Significant relationship between cell density and recruit size for each species. Difference in cell density between species. 
+Significant relationship between cell density and recruit size for each species. Difference in relationship between size and density between species. 
+
+Visually there is a strong positive relationship between recruit size and cell density per unit size in POC and POR, but not ACR. 
 
 # Output files
 

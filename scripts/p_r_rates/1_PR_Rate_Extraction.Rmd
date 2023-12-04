@@ -122,6 +122,10 @@ df %>%
   pull(thin_data_plot)
 ```
 
+
+Specify manual time intervals for samples were the automatic extracted slope is not representative. 
+
+
 # Fit regressions to each interval for each sample
 ```{r} 
 # Define function for fitting LoLinR regressions to be applied to all intervals for all samples
@@ -139,13 +143,6 @@ df <- df %>%
     group_by(., Light_Value) %>%
     do(rankLcRg = fit_reg(.))
   }))
-
-# df <- df %>%
-#   mutate(regs = furrr::future_map(thin_data, function(.) {       # future_map executes function in parallel
-#     group_by(., Light_Value) %>%
-#     do(rankLcRg = fit_reg(.), 
-#        MeanTemp = summarise(., mean(Temp))
-#   }))
 
 ## Now 'regs' contains the fitted local regressions for each interval of each sample's thinned dataset
 
