@@ -85,11 +85,21 @@ ledr_plot<-pr_wide %>% ggplot(aes(x=Temperature, y=LEDR, colour = Lifestage))+
   ylab(expression(bold(paste("LEDR (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic();ledr_plot
 
+#remove those with 0 respiration as this is not biologically possible 
+ledr_plot<-pr_wide %>% filter(LEDR>0)%>% ggplot(aes(x=Temperature, y=LEDR, colour = Lifestage))+
+  geom_point(position=position_dodge(0.5))+
+  facet_wrap(~Species, nrow=1)+
+  ylim(0, 2.5)+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("LEDR (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
+  theme_classic();ledr_plot
+
 ggsave("figures/p_r_rates/LEDR_dots.png", ledr_plot, width = 8, height = 4)
 
 # view by means 
 ledr_plot_2<-pr_wide %>% 
   group_by(Species, Lifestage, Temperature)%>%
+  filter(LEDR>0)%>%
   summarise(mean=mean(LEDR, na.rm=TRUE), se=sd(LEDR, na.rm=TRUE)/sqrt(length(LEDR)))%>%
   
   ggplot(aes(x=Temperature, y=mean, colour = Lifestage))+
@@ -113,6 +123,7 @@ pnet_plot<-pr_wide %>% ggplot(aes(x=Temperature, y=Pnet, colour = Lifestage))+
   facet_wrap(~Species, nrow=1)+
   #geom_text(aes(label=sample_id),hjust=0, vjust=0)+
   xlab(expression(bold("Temperature °C"))) +
+  ylim(0, 3.1)+
   ylab(expression(bold(paste(P[Net], " (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic(); pnet_plot
 
@@ -128,7 +139,7 @@ pnet_plot_2<-pr_wide %>%
   geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Lifestage), color="gray", width=0.1, position=position_dodge(0.5))+
   geom_line(aes(group=Lifestage), linewidth=1.2, position=position_dodge(0.5))+
   facet_wrap(~Species, nrow=1)+
-  #ylim(0, 2)+
+  ylim(0, 3)+
   xlab(expression(bold("Temperature °C"))) +
   ylab(expression(bold(paste(P[Net], " (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic();pnet_plot_2
@@ -159,7 +170,7 @@ pgross_plot_2<-pr_wide %>%
   geom_errorbar(aes(ymin=(mean)-se, ymax=(mean)+se, group=Lifestage), color="gray", width=0.1, position=position_dodge(0.5))+
   geom_line(aes(group=Lifestage), linewidth=1.2, position=position_dodge(0.5))+
   facet_wrap(~Species, nrow=1)+
-  #ylim(0, 2)+
+  ylim(0, 4.1)+
   xlab(expression(bold("Temperature °C"))) +
   ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic();pgross_plot_2
@@ -170,7 +181,7 @@ ggsave("figures/p_r_rates/Pgross_means.png", pgross_plot_2, width = 8, height = 
 Visualize PR ratio
 ```{r}
 #plot  values
-pr_ratio_plot<-pr_wide %>% filter(PR_ratio>0) %>% 
+pr_ratio_plot<-pr_wide %>% filter(LEDR>0) %>% filter(PR_ratio>0) %>% 
   ggplot(aes(x=Temperature, y=PR_ratio, colour = Lifestage))+
   geom_point(aes(), position=position_dodge(0.3))+
   facet_wrap(~Species, nrow=1)+
@@ -186,6 +197,7 @@ ggsave("figures/p_r_rates/PR_ratio_dots.png", pr_ratio_plot, width = 8, height =
 # view by means 
 pr_ratio_plot_2<-pr_wide %>% 
   filter(PR_ratio>0) %>% 
+  filter(LEDR>0)%>%
   group_by(Species, Lifestage, Temperature)%>%
   summarise(mean=mean(PR_ratio, na.rm=TRUE), se=sd(PR_ratio, na.rm=TRUE)/sqrt(length(PR_ratio)))%>%
   
@@ -244,6 +256,8 @@ ledr_samples<-pr_wide %>% ggplot(aes(x=Lifestage, y=LEDR, colour = Lifestage))+
 ggsave("figures/p_r_rates/LEDR_samples.png", ledr_samples, width = 16, height = 12)
 ```
 
+Need to look into 0 observations and QC to make sure the slope extraction was correct. 
+
 # Statistical tests on each metric 
 
 Run ANOVAs on each metric 
@@ -256,7 +270,7 @@ summary(model1)
 emm<-emmeans(model1, ~Lifestage | Species)
 pairs(emm)
 ```
-Significant species x lifestage interaction. No effect of temperature. P gross is lower in POR recruits than adults. No difference in other species. 
+Significant species x lifestage interaction on P gross. No effect of temperature. P gross is lower in POR recruits than adults. No difference in other species. 
 
 LEDR
 ```{r}
@@ -295,6 +309,7 @@ pgross_plot_recruit<-pr_wide %>% filter(Lifestage=="Recruit") %>%
   xlab(expression(bold(paste("Recruit Surface Area (cm"^2, ")")))) +
   ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " cm"^-2, "hr"^-1, ")")))) +
   theme_classic()+
+  ylim(0, 3.5)+
   theme(legend.position="none"); pgross_plot_recruit
 
 ggsave("figures/p_r_rates/Pgross_recruit_size.png", pgross_plot_recruit, width = 6, height = 4)
@@ -304,7 +319,7 @@ Not a strong relationship from what I can see.
 
 LEDR
 ```{r}
-ledr_plot_recruit<-pr_wide %>% filter(Lifestage=="Recruit") %>% 
+ledr_plot_recruit<-pr_wide %>% filter(Lifestage=="Recruit") %>% filter(LEDR>0) %>%
   ggplot(aes(x=surface.area, y=LEDR, colour = Temperature))+
   geom_point(position=position_dodge(0.3), alpha=0.3)+
   facet_wrap(~Species, nrow=1, scales="free_x")+
@@ -315,12 +330,13 @@ ledr_plot_recruit<-pr_wide %>% filter(Lifestage=="Recruit") %>%
   xlab(expression(bold(paste("Recruit Surface Area (cm"^2, ")")))) +
   ylab(expression(bold(paste("LEDR (µmol ", O[2], " cm"^-2, "hr"^-1, ")")))) +
   theme_classic()+
+  ylim(0, 1.75)+
   theme(legend.position="none"); ledr_plot_recruit
 
 ggsave("figures/p_r_rates/LEDR_recruit_size.png", ledr_plot_recruit, width = 6, height = 4)
 ```
 
-Doesn't look like a strong relationship. 
+Maybe a negative relationship in POC and positive in POR? 
 
 ## Statistical tests 
 
@@ -338,6 +354,7 @@ No effects.
 LEDR by size 
 ```{r}
 model4b<- pr_wide%>%
+          filter(LEDR>0)%>%
           filter(Lifestage=="Recruit")%>%
   
   aov(LEDR~surface.area*Species, data=.)
@@ -351,6 +368,7 @@ No effects.
 Plot correlation between P and R
 ```{r}
 corr1<-pr_wide%>%
+  filter(LEDR>0)%>%
   
   ggplot(aes(x=LEDR, y=Pgross, colour = Temperature))+
   geom_point(position=position_dodge(0.3), alpha=0.3)+
@@ -362,6 +380,7 @@ corr1<-pr_wide%>%
   xlab(expression(bold(paste("LEDR (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic()+
+  ylim(0, 5.5)+
   theme(legend.position="none"); corr1
 
 ggsave("figures/p_r_rates/P_LEDR_correlation.png", corr1, width = 6, height = 4)
@@ -369,7 +388,10 @@ ggsave("figures/p_r_rates/P_LEDR_correlation.png", corr1, width = 6, height = 4)
 
 There is a strong correlation between LEDR and Pgross. 
 ```{r}
-model5<-aov(Pgross~LEDR*Species, data=pr_wide)
+model5<-pr_wide%>%
+  filter(LEDR>0)%>%
+  aov(Pgross~LEDR*Species, data=.)
+
 summary(model5)
 
 cor.test(pr_wide$Pgross, pr_wide$LEDR, method="pearson")
@@ -402,7 +424,7 @@ cell_plot1<-pr_wide%>%
   xlab(expression(bold("Temperature °C"))) +
   ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic()+
-  theme(legend.position="none"); cell_plot1
+  theme(legend.position="right"); cell_plot1
 
 ggsave("figures/p_r_rates/Pgross_cell_dots.png", cell_plot1, width = 6, height = 4)
 ```
@@ -424,7 +446,7 @@ cell_plot2<-pr_wide%>%
   xlab(expression(bold("Temperature °C"))) +
   ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " cell"^-1, "hr"^-1, ")")))) +
   theme_classic()+
-  theme(legend.position="none"); cell_plot2
+  theme(legend.position="right"); cell_plot2
 
 ggsave("figures/p_r_rates/Pgross_cell_means.png", cell_plot2, width = 6, height = 4)
 ```
@@ -441,10 +463,10 @@ model6<-pr_wide%>%
 
 summary(model6)
 
-emm<-emmeans(model6, ~Lifestage | Species)
+emm<-emmeans(model6, ~Lifestage | Temperature | Species)
 pairs(emm)
 ```
-Interaction of species and lifestage, almost an effect of temp but not quite. Recruit Pgross per cell is higher in POC than adults. No difference in other species. 
+Interaction between species x lifestage x temperature and species x lifestage. Higher in POC recruits than adults. At 30C, POC recruit P gross is higher than adult P gross. Not different at other temperatures (almost at 33C). No other differences in other species. 
 
 ## LEDR per cell 
 
@@ -503,14 +525,14 @@ model7<-pr_wide%>%
 
 summary(model7)
 ```
-No difference in LEDR normalized to cells. 
+No difference in LEDR normalized to cells. Almost an effect of temp but not really. 
 
 ## P net per cell 
 
 View individual observations. 
 ```{r}
 cell_plot5<-pr_wide%>%
-  filter(Pnet_cell<0.00003)%>%
+  filter(Pnet_cell<0.00002)%>%
   
   ggplot(aes(x=Temperature, y=Pnet_cell, colour = Lifestage))+
   geom_point(position=position_dodge(0.3), alpha=1)+
@@ -529,7 +551,7 @@ ggsave("figures/p_r_rates/Pnet_cell_dots.png", cell_plot5, width = 6, height = 4
 View mean observations. 
 ```{r}
 cell_plot6<-pr_wide%>%
-  filter(Pnet_cell<0.00003)%>%
+  filter(Pnet_cell<0.00002)%>%
   filter(!is.na(Pnet_cell))%>%
   group_by(Species, Lifestage, Temperature)%>%
   mutate(mean=mean(Pnet_cell, na.rm=TRUE), sd=sd(Pnet_cell, na.rm=TRUE), N=length(Pnet_cell), se=sd/sqrt(N))%>%
@@ -553,14 +575,14 @@ Analyze Pnet per cell
 Run anova. 
 ```{r}
 model8<-pr_wide%>%
-  filter(Pnet_cell<0.00003)%>%
+  filter(Pnet_cell<0.00002)%>%
   filter(!is.na(Pnet_cell))%>%
   
   aov(Pnet_cell~Species*Lifestage*Temperature, data=.)
 
 summary(model8)
 
-emm<-emmeans(model8, ~Lifestage)
+emm<-emmeans(model8, ~Lifestage | Species)
 pairs(emm)
 ```
-There is a lifestage effect. Recruit Pnet per cell is higher than adults. This is most apparent in POC as we saw in Pgross per cell. 
+There is a lifestage effect and species effect. Recruit Pnet is higher in recruits than adults. No difference in other species. 
