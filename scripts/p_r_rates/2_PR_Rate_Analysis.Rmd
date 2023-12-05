@@ -418,7 +418,7 @@ cell_plot1<-pr_wide%>%
   ggplot(aes(x=Temperature, y=Pgross_cell, colour = Lifestage))+
   geom_point(position=position_dodge(0.3), alpha=1)+
   facet_wrap(~Species, nrow=1, scales="free_x")+
-  geom_smooth(method="lm", aes(group=Lifestage), se=FALSE)+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
   #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
 
   xlab(expression(bold("Temperature °C"))) +
@@ -480,7 +480,7 @@ cell_plot3<-pr_wide%>%
   ggplot(aes(x=Temperature, y=LEDR_cell, colour = Lifestage))+
   geom_point(position=position_dodge(0.3), alpha=1)+
   facet_wrap(~Species, nrow=1, scales="free_x")+
-  geom_smooth(method="lm", aes(group=Lifestage), se=FALSE)+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
   #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
 
   xlab(expression(bold("Temperature °C"))) +
@@ -537,7 +537,7 @@ cell_plot5<-pr_wide%>%
   ggplot(aes(x=Temperature, y=Pnet_cell, colour = Lifestage))+
   geom_point(position=position_dodge(0.3), alpha=1)+
   facet_wrap(~Species, nrow=1, scales="free_x")+
-  geom_smooth(method="lm", aes(group=Lifestage), se=FALSE)+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
   #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
 
   xlab(expression(bold("Temperature °C"))) +
