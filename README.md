@@ -19,7 +19,6 @@ ashuffmyer@uri.edu
 2. Data: Contains raw data collection including plate maps, sample metadata, data files, and sample manifest lists. 
 3. Figures: Contains figures produced through scripts in the Code folder. 
 4. Output: Contains data summaries or data generated from scripts in the Code folder. 
-5. Protocols: Contains documents with protocols for each proceedure.  
 
 # Online Lab Notebook 
 
