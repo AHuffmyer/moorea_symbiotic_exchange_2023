@@ -33,6 +33,7 @@ library(emmeans)
 ## libraries for parallel processing
 library(future)
 library(furrr)
+library(hms)
 ```
 
 ## Import metadata
@@ -59,13 +60,121 @@ metadata <- metadata %>%
   select(Species, Lifestage, sample_id, Run, Temp.Cat, Chamber.Vol.L, Date, Start.time, Stop.time, Light_Value, Light_Level)
 ```
 
+## Manually adjust time intervals as needed for certain samples 
+
+Manually change the time frame for each sample as needed from notebook or viewing QC plots. 
+
+Photosythesis
+```{r}
+new_metadata <- metadata %>%
+  
+  # sample ACR-A13: original 15:11:00 to 15:26:00; shift later 
+  mutate(Start.time = if_else(sample_id=="ACR-A13" & Light_Value=="550", as_hms("15:18:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="ACR-A13" & Light_Value=="550", as_hms("15:26:00"), Stop.time)) %>%
+
+  # sample ACR-R16: original 12:36:00 to 12:51:00; shift earlier
+  mutate(Start.time = if_else(sample_id=="ACR-R16" & Light_Value=="550", as_hms("12:36:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="ACR-R16" & Light_Value=="550", as_hms("12:44:00"), Stop.time)) %>%
+  
+  #sample POC-R14: original 12:36:00 to 12:51:00; shift to after probe error at increase slope
+  mutate(Start.time = if_else(sample_id=="POC-R14" & Light_Value=="550", as_hms("12:41:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R14" & Light_Value=="550", as_hms("12:47:00"), Stop.time)) %>%
+
+#sample POC-R16: original 15:11:00 to 15:26:00; shift to after probe error at increase slope
+  mutate(Start.time = if_else(sample_id=="POC-R16" & Light_Value=="550", as_hms("15:18:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R16" & Light_Value=="550", as_hms("15:26:00"), Stop.time)) %>%
+  
+  #sample POC-R26: original 17:32:00 to 17:43:00; keep earlier interval before error
+  mutate(Start.time = if_else(sample_id=="POC-R26" & Light_Value=="550", as_hms("17:32:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R26" & Light_Value=="550", as_hms("17:36:00"), Stop.time)) %>% 
+  
+  #sample POR-A10: original 12:36:00 to 12:51:00; keep earlier interval before error
+  mutate(Start.time = if_else(sample_id=="POR-A10" & Light_Value=="550", as_hms("12:36:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-A10" & Light_Value=="550", as_hms("12:49:00"), Stop.time)) %>%
+  
+  # sample POR-R13: original 12:36:00 to 12:51:00; shift earlier
+  mutate(Start.time = if_else(sample_id=="POR-R13" & Light_Value=="550", as_hms("12:36:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-R13" & Light_Value=="550", as_hms("12:44:00"), Stop.time)) %>%
+  
+  # sample POR-R14: original 17:32:00 to 17:43:00; shift earlier
+  mutate(Start.time = if_else(sample_id=="POR-R14" & Light_Value=="550", as_hms("17:40:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-R14" & Light_Value=="550", as_hms("17:43:00"), Stop.time)) %>%
+  
+  # sample POC-A16: original 15:11:00 to 15:26:00; shift later
+  mutate(Start.time = if_else(sample_id=="POC-A16" & Light_Value=="550", as_hms("15:21:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-A16" & Light_Value=="550", as_hms("15:26:00"), Stop.time)) %>%
+  
+  # sample POC-R30: original 12:36:00 to 12:51:00; shift later
+  mutate(Start.time = if_else(sample_id=="POC-R30" & Light_Value=="550", as_hms("12:36:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R30" & Light_Value=="550", as_hms("12:44:00"), Stop.time)) %>%
+  
+  # sample POR-R27: original 15:11:00 to 15:26:00; trim off end
+  mutate(Start.time = if_else(sample_id=="POR-R27" & Light_Value=="550", as_hms("15:11:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-R27" & Light_Value=="550", as_hms("15:24:00"), Stop.time))
+
+```
+
+Respiration
+```{r}
+new_metadata <- new_metadata %>%
+  
+  # sample ACR-R16: original 12:53:00 to 13:08:00; shift later 
+  mutate(Start.time = if_else(sample_id=="ACR-R16" & Light_Value=="0", as_hms("13:02:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="ACR-R16" & Light_Value=="0", as_hms("13:08:00"), Stop.time)) %>%
+  
+  # sample POC-R14: original 12:53:00 to 13:08:00; shift later 
+  mutate(Start.time = if_else(sample_id=="POC-R14" & Light_Value=="0", as_hms("13:02:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R14" & Light_Value=="0", as_hms("13:08:00"), Stop.time)) %>%
+  
+  # sample POC-R26: original 17:48:00 to 17:58:00; shift later 
+  mutate(Start.time = if_else(sample_id=="POC-R26" & Light_Value=="0", as_hms("17:53:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R26" & Light_Value=="0", as_hms("17:58:00"), Stop.time)) %>%
+  
+  # sample POR-A10: original 12:53:00 to 13:08:00; shift later 
+  mutate(Start.time = if_else(sample_id=="POR-A10" & Light_Value=="0", as_hms("13:02:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-A10" & Light_Value=="0", as_hms("13:08:00"), Stop.time))  %>%
+  
+  # sample POR-R13: original 12:53:00 to 13:08:00; shift later 
+  mutate(Start.time = if_else(sample_id=="POR-R13" & Light_Value=="0", as_hms("13:02:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-R13" & Light_Value=="0", as_hms("13:08:00"), Stop.time)) %>%
+  
+  # sample ACR-A13: original 15:28:00 to 15:43:00; shift later 
+  mutate(Start.time = if_else(sample_id=="ACR-A13" & Light_Value=="0", as_hms("15:28:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="ACR-A13" & Light_Value=="0", as_hms("15:35:00"), Stop.time)) %>%
+
+  # sample POC-R20: original 15:28:00 to 15:43:00; shift earlier 
+  mutate(Start.time = if_else(sample_id=="POC-R20" & Light_Value=="0", as_hms("15:28:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POC-R20" & Light_Value=="0", as_hms("15:36:00"), Stop.time)) %>%
+
+  # sample POR-R19: original 12:53:00 to 13:08:00; xxx 
+  mutate(Start.time = if_else(sample_id=="POR-R19" & Light_Value=="0", as_hms("13:02:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="POR-R19" & Light_Value=="0", as_hms("13:08:00"), Stop.time))
+  
+```
+
+Blanks
+```{r}
+new_metadata <- new_metadata %>%
+  
+  #dark blanks
+ #sample BK-1: original 12:53:00 to 13:08:00; shift later 
+  mutate(Start.time = if_else(sample_id=="BK-1" & Light_Value=="0", as_hms("13:06:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="BK-1" & Light_Value=="0", as_hms("13:08:00"), Stop.time)) %>% 
+  
+  #light blanks 
+  #sample BK-4: original 12:13:00 to 12:28:00; shift later 
+  mutate(Start.time = if_else(sample_id=="BK-4" & Light_Value=="550", as_hms("12:21:00"), Start.time)) %>%
+  mutate(Stop.time = if_else(sample_id=="BK-4" & Light_Value=="550", as_hms("12:28:00"), Stop.time))
+  
+```
+Blanks 2-6 look good for the 0 par period. All are negative slopes. BK-1 is weird and is positive, looks like a probe error. Extracted from same region as the samples which is later in the interval. Blank 4 during light period shifted later in interval. 
 
 # Read in all data files
 ```{r, results="hide", message=FALSE}
 #identify the sample id from the file name and read in data
 df <- tibble(file.name = file.names) %>%
   mutate(sample_id = gsub("_.*", "", file.name),                              # Get sample_id from filename
-          info = map(sample_id, ~filter(metadata, sample_id == .)),           # Get associated sample info
+          info = map(sample_id, ~filter(new_metadata, sample_id == .)),           # Get associated sample info
          data0 = map(file.name, ~read_csv(file.path(path.p, .), skip=1, col_types = cols(.default = "d", Time = "t"), col_select = c(Time, Value, Temp))))   # Get associated O2 data
 
 # Select only Time, Value, and Temp columns from O2 data
@@ -76,24 +185,65 @@ df <- df %>%
 ```
 
 ## Use the time breaks in the sample info to link O2 data with light levels
+
+Test this script with one colony 
+```{r}
+#df_test<-df%>%filter(sample_id=="ACR-R16")
+```
+
 ```{r, warning = FALSE}
 
 unnest<-unnest_legacy
 nest<-nest_legacy
+```
+
+New code to correctly take into account stop.time.
+```{r}
+df<-df %>%
+  
+  dplyr::mutate(intervals = map2(data0, info, function(.x, .y) {
+    breaks <- as.numeric(c(.y$Start.time, .y$Stop.time))
+    #labels <- as.character(.y$Light_Value)
+    #print(breaks)
+    #print(labels)
+    split(.x, f = cut(as.numeric(.x$Time), breaks = breaks, labels = FALSE, right=TRUE))
+  })) %>%
+  dplyr::mutate(data = map(intervals, ~ unnest(tibble(.), .id = "interval")))
+
+#Manually assign interval 1 as PAR 550, interval 2 remove, interval 3 as PAR0  
+
+df <- df %>%
+  mutate(data = map(data, ~ mutate(.x, Light_Value = case_when(
+    interval == 1 ~ 550,
+    interval == 2 ~ NA_real_,
+    interval == 3 ~ 0,
+    TRUE ~ NA_real_  # Include this line to handle other cases, if any
+  )) %>%
+  filter(!is.na(Light_Value))))
+```
+
+This code above works by adding an interval number to the section in the middle that we dont want. We then keep interval 1 = 550 PAR, interval 2 = in between - remove, interval 3 = 0 PAR.   
+
+Original version
+```{r, warning = FALSE}
+
+#unnest<-unnest_legacy
+#nest<-nest_legacy
 
 #Use start time of each light step from the metadata to separate data by light stop
-df <- df %>%
-  dplyr::mutate(intervals = map2(data0, info, function(.x, .y) {
-    split(.x, f = cut(as.numeric(.x$Time), breaks = as.numeric(c(.y$Start.time, last(.y$Stop.time))),
-                      labels = as.character(.y$Light_Value)))})) %>%
-  dplyr::mutate(data = map(intervals, ~ unnest(tibble(.), .id = "Light_Value")))
+#df <- df %>%
+#  dplyr::mutate(intervals = map2(data0, info, function(.x, .y) {
+#    split(.x, f = cut(as.numeric(.x$Time), breaks = as.numeric(c(.y$Start.time, last(.y$Stop.time))),
+#                      labels = as.character(.y$Light_Value)))})) %>%
+#  dplyr::mutate(data = map(intervals, ~ unnest(tibble(.), .id = "Light_Value")))
 
 ```
+
 
 ### Thin data
 ```{r, fig.height = 8, fig.width = 8}
 # Set thinning parameter
-thin_par <- 20
+thin_par <- 10
 
 # Thin data for all samples
 df <- df %>%
@@ -116,14 +266,13 @@ cowplot::plot_grid(df$data_plot[[1]], df$thin_data_plot[[1]], nrow = 2,
 ```
 
 #### The full or thinned data plot for any sample can be accessed like this:
-```
+
+```{r}
 df %>%
-  filter(sample_id == "Sample-Name-Here") %>%
+  filter(sample_id == "POR-R19") %>%
   pull(thin_data_plot)
+
 ```
-
-
-Specify manual time intervals for samples were the automatic extracted slope is not representative. 
 
 
 # Fit regressions to each interval for each sample
@@ -156,26 +305,22 @@ plot_rankLcRg <- function(sample_id, interval_number) {
 ```
 
 #### The diagnostics for any regression can be plotted by specifying a sample_id and the number of the light curve interval:
+
 ```{r}
-# Define function to pull out and plot regression diagnostics
-
-# pdf("output/Past-D1_test.pdf")
-plot_rankLcRg("ACR-A10", 1)
-plot_rankLcRg("ACR-A10", 2)
-plot_rankLcRg("POR-A12", 1)
-plot_rankLcRg("POR-A12", 2)
-
-# dev.off()
+df %>%
+    filter(sample_id == "POR-R19") %>%
+    pluck("regs", 1, "rankLcRg", 1) %>% # 2=P; 1=R
+    plot()
 ```
 
-Generate and export a diagnostic plot for each temperature and light level. 
-```{r, results=FALSE, warning=FALSE, message=FALSE}
+Generate and export a diagnostic plot for each light level. 
+```{r message=FALSE, warning=FALSE, results=FALSE}
 
 samples<-df$sample_id
 
 for(i in samples) { # for every sample in list start at the first and run this following function
   
-    pdf(paste0("output/p_r_rates/RespirationPlots/", i, "_Light1", "_regression.pdf")) #generate output file names
+    pdf(paste0("output/p_r_rates/RespirationPlots/", i, "_0PAR", "_regression.pdf")) #generate output file names
   
     df %>%
     filter(sample_id == i) %>%
@@ -187,7 +332,7 @@ for(i in samples) { # for every sample in list start at the first and run this f
 
 for(i in samples) { # for every sample in list start at the first and run this following function
   
-    pdf(paste0("output/p_r_rates/PhotosynthesisPlots/", i, "_Light1", "_regression.pdf")) #generate output file names
+    pdf(paste0("output/p_r_rates/PhotosynthesisPlots/", i, "_550PAR", "_regression.pdf")) #generate output file names
   
     df %>%
     filter(sample_id == i) %>%
@@ -197,32 +342,6 @@ for(i in samples) { # for every sample in list start at the first and run this f
     dev.off()
 }
 ```
-
-QC to resolve manually: 
-
-Photosynthesis/Light 1 
-
-- ACR-A13 is lower than actual - need to pull from later on in the interval to get a representative slope. 
-- ACR-R16 is not a representative slope - needs to pull from earlier in the interval. This one is an outlier on the plots. 
-- Blank1 is a little weird, not sure where to pull slope, check blanks
-- Blank4 is a little weird, not sure where to pull slope, check blanks
-- Blank5 is a little weird, not sure where to pull slope, check blanks
-- POC-R14 is not a representative slope - needs to pull from earlier in the interval. 
-- POC-R16 was a lot higher of a slope in the second half of the interval (double check if this is an outlier). This may be an outlier based on the plot. 
-- POC-R26 is also a bit weird at the start of the interval, may need to extract from latter part of the interval. Low on the plot. 
-- POR-A10 is not a representative slope - needs to pull from earlier in the interval perhaps? Low on the plot as an outlier. 
-- POR-R11 is not a representative slope - needs to pull from later in the interval? Low on plot/potential outlier. 
-- POR-R13 is not a representative slope - needs to pull from earlier in the interval. Outlier on plot. 
-- POR-R14 is not a representative slope - needs to pull from short time of proper increase in the middle of the interval - this had a probe error I believe. Outlier/low on the plot. 
-
-Respiration / Light 2
-- ACR-R16 is not representative, pull from either earlier or later in the interval. Outlier on plot as higher than others. 
-- ACR-R19 is not representative, pull from earlier in the interval. Also higher than other observations. 
-- Check magnitude of all blanks to double check 
-- POC-R14 is not representative, pull from either earlier or later in the interval. Outlier on plots, higher than others. 
-- POC-R26 needs to be pulled from slightly later in the interval. Outlier on plots, higher than others. 
-- POR-A10 needs to be pulled from slightly later in the interval. Outlier on plots, higher than others.  
-- POR-R13 is not representative, needs to be pulled from earlier or later in the interval. Outlier on plots, higher than others. 
 
 ### Extract slope of best regression for each interval for each sample
 ```{r}
@@ -250,7 +369,7 @@ xxx <- xx %>%
   summarise(light_steps = n())
 
 #select only the essential columns
-mx <- select(metadata, Species, Lifestage, sample_id, Run, Chamber.Vol.L, Temp.Cat)
+mx <- select(new_metadata, Species, Lifestage, sample_id, Run, Chamber.Vol.L, Temp.Cat)
 nrow(mx)
 nrow(distinct(df))
 
@@ -270,26 +389,33 @@ write.csv(pr, "output/p_r_rates/pr_curve_extracted_rates_Raw.csv")
 pr <- pr %>% mutate(micromol.s = micromol.L.s * Chamber.Vol.L)
 length(unique(pr$sample_id))
 
+# plot raw blanks 
+pr %>%
+  filter(grepl("BK", sample_id)) %>%
+  ggplot(aes(x=as.numeric(Light_Value), y=micromol.L.s, colour = as.factor(Temp.Cat)))+
+  geom_point()
+  
 # Correct for blank rates
 # Get blank values -- average for each run and light value in case multiple blanks
 blanks <- pr %>%
   filter(grepl("BK", sample_id)) %>%
-  group_by(Temp.Cat, Light_Value) %>%
+  group_by(Temp.Cat, Light_Value, Run) %>%
   summarise(micromol.s.blank=mean(micromol.s))%>%
-  mutate(blank_id=paste0(Temp.Cat,"-",Light_Value))
+  mutate(blank_id=paste0(Temp.Cat,"-",Light_Value, "-", Run))
 
 ### generate a key for the blank id
 pr <- pr %>%
-  mutate(blank_id=paste0(Temp.Cat,"-",Light_Value))
+  mutate(blank_id=paste0(Temp.Cat,"-",Light_Value, "-", Run))
 length(unique(pr$sample_id))
+pr$blank_id
 
 #plot blank values
-blanks %>% ggplot(aes(x=as.numeric(Light_Value), y=micromol.s.blank,colour = as.factor(Temp.Cat)))+
-  geom_point()+
-  geom_line()
+blanks %>% ggplot(aes(x=Run, y=micromol.s.blank,colour = as.factor(Temp.Cat)))+
+  facet_wrap(~Light_Value)+
+  geom_point()
 
 #examine the effects of light and temp on the blank rates
-anova(lm(micromol.s.blank~as.factor(Light_Value)*Temp.Cat, data=blanks))
+anova(lm(micromol.s.blank~Run, data=blanks))
 
 #join the data and the mean of the blanks per temperature for each specific light level
 pr  <- left_join(pr ,blanks,by = "blank_id")
@@ -327,7 +453,7 @@ length(unique(pr$sample_id))
 ```{r}
 # Select variables to write to file
 pr.out <- pr %>% 
-  select(Species, Lifestage, sample_id, Light_Value.x, Temp.Cat.x, Run, micromol.cm2.s, micromol.cm2.h)
+  select(Species, Lifestage, sample_id, Light_Value.x, Temp.Cat.x, Run.x, micromol.cm2.s, micromol.cm2.h)
 length(unique(pr.out$sample_id))
 
 # Write to output file
