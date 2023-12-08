@@ -136,7 +136,7 @@ prot <- left_join(prot, metadata) %>%
          prot_mg.cm2 = prot_ug.cm2 / 1000)
 ```
 
-# Plot results by species and site
+# Plot results by species and stage
 ```{r}
 # Plot all data points with mean ± se
 prot %>%
@@ -163,7 +163,7 @@ prot <- prot %>%
   summarise(prot_mg.cm2 = mean(prot_mg.cm2, na.rm = T)) %>%
   select(colony_id, species, lifestage, prot_mg.cm2) 
 
-  write_csv(prot, path = "output/protein.csv")
+  write_csv(prot, file = "output/physiology/protein/protein.csv")
 ```
 
 # Plot results by species and stage
@@ -184,3 +184,94 @@ prot %>%
 #prot <- prot %>%
 #  filter(abs562 > 0.1)
 ```
+
+# Plotting and ANOVA analyses 
+
+Attach temperature metadata. 
+```{r}
+sample.info <- read_csv(file = "data/p_r_rates/pr_sample_metadata.csv")
+sample.info<-sample.info%>%rename(colony_id=sample_id)%>%select(colony_id, Temp.Cat)%>%filter(!grepl("BK", colony_id))
+
+prot<-left_join(prot, sample.info)
+```
+
+View individual observations. 
+```{r}
+prot_plot1<-prot%>%
+  
+  ggplot(aes(x=Temp.Cat, y=prot_mg.cm2, colour = lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Protein (mg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); prot_plot1
+
+ggsave("figures/physiology/protein/protein_dots.png", prot_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+prot_plot2<-prot%>%
+  group_by(species, lifestage, Temp.Cat)%>%
+  mutate(mean=mean(prot_mg.cm2, na.rm=TRUE), sd=sd(prot_mg.cm2, na.rm=TRUE), N=length(prot_mg.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Protein (mg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); prot_plot2
+
+ggsave("figures/physiology/protein/protein_means.png", prot_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature.  
+```{r}
+prot_plot3<-prot%>%
+  group_by(species, lifestage)%>%
+  mutate(mean=mean(prot_mg.cm2, na.rm=TRUE), sd=sd(prot_mg.cm2, na.rm=TRUE), N=length(prot_mg.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=lifestage, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+  ylab(expression(bold(paste("Protein (mg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); prot_plot3
+
+ggsave("figures/physiology/protein/protein_overall_means.png", prot_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA model
+
+```{r}
+model1<-prot%>%
+  
+  aov(prot_mg.cm2~species*lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ lifestage | species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species*lifestage)
+pairs(emm)
+```
+Strong effects of species and lifestage, no interactions. In POC and POR, adult protein is higher than recruit protein. No difference in ACR detected. There is a difference in ACR-POR and POC-POR. No difference between ACR and POC at a species level.  
+
+
+
