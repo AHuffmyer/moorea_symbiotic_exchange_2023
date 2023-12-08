@@ -271,7 +271,7 @@ pairs(emm)
 emm<-emmeans(model1, ~ species*lifestage)
 pairs(emm)
 ```
-Strong effects of species and lifestage, no interactions. In POC and POR, adult protein is higher than recruit protein. No difference in ACR detected. There is a difference in ACR-POR and POC-POR. No difference between ACR and POC at a species level.  
+Strong effects of species and lifestage, no interactions. Adult protein is higher than recruit. In POC and POR, adult protein is higher than recruit protein. No difference in ACR detected in posthoc tests. There is a difference in ACR-POR and POC-POR. No difference between ACR and POC at a species level. Between species, POC and ACR recruits are lower than POR recruits. No difference between ACR and POC recruits. ACR and POC adult are lower than POR adults. No difference in ACR and POC adults. 
 
 
 

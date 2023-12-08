@@ -39,14 +39,16 @@ library(furrr)
 ```{r, warning = FALSE}
 pr<-read_csv(file="output/p_r_rates/pr_curve_extracted_rates.csv")
 sa<-read_csv(file="output/physiology/surface_area/surface_area.csv")
+prot<-read_csv(file="output/physiology/protein/protein.csv")%>%rename(sample_id=colony_id)
 ```
 
-Add in surface area into pr data frame 
+Add in surface area and protein into pr data frame 
 ```{r}
-pr$surface.area<-sa$surface.area.cm2[match(pr$sample_id, sa$sample_id)]
-```
+pr$surface.area<-sa$surface.area.cm2[match(pr$sample_id, sa$colony_id)]
 
-# Calculate P gross and PR ratio
+pr$prot_mg.cm2<-prot$prot_mg.cm2[match(pr$sample_id, prot$sample_id)]
+hist(pr$prot_mg.cm2)
+```
 
 Load in cell density to normalize to cell density. 
 
@@ -54,13 +56,18 @@ Load in cell density to normalize to cell density.
 sym<-read_csv(file="output/physiology/cell_density/symbiont_densities.csv")
 ```
 
-Merge data and normalize rates to per cell and calculate P gross and PR ratio. 
+Merge data and normalize rates to per cell and 
 ```{r}
 pr$cells.cm2<-sym$cells.cm2[match(pr$sample_id, sym$sample_id)]
 hist(pr$cells.cm2)
+```
 
+# Calculate P gross and PR ratio and normalize to cells and protein
+
+Calculate P gross as P net - LEDR and PR ratio as Pgross/LEDR. 
+```{r}
 pr_wide<-pr%>%
-  select(Species, Lifestage, sample_id, Temp.Cat.x, micromol.cm2.h, surface.area, cells.cm2, Light_Value.x)%>%
+  select(Species, Lifestage, sample_id, Temp.Cat.x, micromol.cm2.h, surface.area, cells.cm2, prot_mg.cm2, Light_Value.x)%>%
   pivot_wider(names_from=Light_Value.x, values_from=micromol.cm2.h)%>%
   rename(LEDR=`0`, Pnet=`550`)%>%
   mutate(LEDR=if_else(LEDR>0, 0, LEDR))%>% #if no oxygen consumption was observed, add 0 for respiration value
@@ -69,12 +76,15 @@ pr_wide<-pr%>%
   mutate(LEDR_cell=LEDR/cells.cm2)%>%
   mutate(Pnet_cell=Pnet/cells.cm2)%>%
   mutate(Pgross_cell=Pgross/cells.cm2)%>%
+  mutate(LEDR_prot=LEDR/prot_mg.cm2)%>%
+  mutate(Pnet_prot=Pnet/prot_mg.cm2)%>%
+  mutate(Pgross_prot=Pgross/prot_mg.cm2)%>%
   rename(Temperature=Temp.Cat.x)%>%
   mutate(Temperature=as.factor(Temperature))%>%
   mutate(PR_ratio=Pgross/LEDR)
 ```
 
-# View LEDR, Pnet, and Pgross by treatment 
+# View LEDR, Pnet, and Pgross per cm2 by treatment 
 
 Visualize LEDR
 ```{r}
@@ -257,7 +267,7 @@ ledr_samples<-pr_wide %>% ggplot(aes(x=Lifestage, y=LEDR, colour = Lifestage))+
 ggsave("figures/p_r_rates/LEDR_samples.png", ledr_samples, width = 16, height = 12)
 ```
 
-# Statistical tests on each metric 
+# Statistical tests on each metric normalized to surface area 
 
 Run ANOVAs on each metric 
 
@@ -300,7 +310,7 @@ pairs(emm)
 ```
 Pnet affected by lifestage x species and lifestage x temperature. POR adults higher than recruit. Adults are higher than recruits at 27°C and 30°C in POR only. Pnet is decreased at 33°C in adult POC but not recruits. 
 
-# View by recruit size 
+# View metabolic rates in a regression by recruit size 
 
 View by size. 
 
@@ -673,4 +683,234 @@ emm<-emmeans(model8, ~Lifestage | Species)
 pairs(emm)
 ```
 Species x lifestage effects. Lower in adults than recruits of POC. Clear trend for higher Pnet per cell in POC at 30-33C, but temperature is not significant. Likely due to variability. 
+
+
+# View metrics normalized to protein 
+
+Plot metrics per mg protein. Identify outliers 
+```{r}
+dev.off()
+hist(pr_wide$Pgross_prot)
+hist(pr_wide$LEDR_prot)
+hist(pr_wide$Pnet_prot)
+hist(pr_wide$prot_mg.cm2)
+```
+
+We have some outliers that we will need to remove for this analysis. 
+
+First view protein observations. 
+```{r}
+pr_wide%>%
+  
+  ggplot(aes(x=Temperature, y=prot_mg.cm2, colour = Lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_smooth(method="lm", aes(group=Lifestage, colour=Lifestage), se=FALSE)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Protein (mg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right")
+```
+I don't see any obvious outliers. Keep all observations. 
+
+We are missing POC-A11 and POR-R28. 
+
+## P gross 
+
+View individual observations. 
+```{r}
+prot_plot1<-pr_wide%>%
+  filter(Pgross_prot<20)%>%
+  
+  ggplot(aes(x=Temperature, y=Pgross_prot, colour = Lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " mg prot"^-1, "hr"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); prot_plot1
+
+ggsave("figures/p_r_rates/Pgross_prot_dots.png", prot_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+prot_plot2<-pr_wide%>%
+  filter(Pgross_prot<20)%>%
+  filter(!is.na(Pgross_prot))%>%
+  group_by(Species, Lifestage, Temperature)%>%
+  mutate(mean=mean(Pgross_prot, na.rm=TRUE), sd=sd(Pgross_prot, na.rm=TRUE), N=length(Pgross_prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temperature, y=mean, colour = Lifestage, group=Lifestage))+
+  geom_line(aes(group=Lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste(P[Gross], " (µmol ", O[2], " mg prot"^-1, "hr"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); prot_plot2
+
+ggsave("figures/p_r_rates/Pgross_prot_means.png", prot_plot2, width = 6, height = 4)
+```
+
+Analyze Pgross per mg prot 
+
+Run anova. 
+```{r}
+model8<-pr_wide%>%
+  filter(Pgross_prot<20)%>%
+  filter(!is.na(Pgross_prot))%>%
+  
+  aov(Pgross_prot~Species*Lifestage*Temperature, data=.)
+
+summary(model8)
+
+emm<-emmeans(model8, ~Lifestage | Species)
+pairs(emm)
+
+emm<-emmeans(model8, ~Species)
+pairs(emm)
+```
+Strong effects of lifestage and species. Adults are lower than recruits in ACR and POC, but posthoc shows no difference between adult and recruits in POR. At the species level, ACR and POC are not different, but POR is lower than the other two species.  
+
+## LEDR per cell 
+
+Plot LEDR per mg prot 
+
+View individual observations. 
+```{r}
+prot_plot3<-pr_wide%>%
+  filter(LEDR_prot<10)%>%
+  
+  ggplot(aes(x=Temperature, y=LEDR_prot, colour = Lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("LEDR (µmol ", O[2], " mg prot"^-1, "hr"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="none"); prot_plot3
+
+ggsave("figures/p_r_rates/LEDR_prot_dots.png", prot_plot3, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+prot_plot4<-pr_wide%>%
+  filter(LEDR_prot<10)%>%
+  filter(!is.na(LEDR_prot))%>%
+  group_by(Species, Lifestage, Temperature)%>%
+  mutate(mean=mean(LEDR_prot, na.rm=TRUE), sd=sd(LEDR_prot, na.rm=TRUE), N=length(LEDR_prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temperature, y=mean, colour = Lifestage, group=Lifestage))+
+  geom_line(aes(group=Lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("LEDR (µmol ", O[2], " mg prot"^-1, "hr"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="none"); prot_plot4
+
+ggsave("figures/p_r_rates/LEDR_prot_means.png", prot_plot4, width = 6, height = 4)
+```
+
+Analyze LEDR per mg prot  
+
+```{r}
+model9<-pr_wide%>%
+  filter(LEDR_prot<10)%>%
+  
+  aov(LEDR_prot~Species*Lifestage*Temperature, data=.)
+
+summary(model9)
+
+emm<-emmeans(model9, ~Lifestage | Temperature | Species)
+pairs(emm)
+
+emm<-emmeans(model9, ~Temperature | Species)
+pairs(emm)
+
+emm<-emmeans(model9, ~Temperature | Lifestage)
+pairs(emm)
+
+emm<-emmeans(model9, ~Temperature)
+pairs(emm)
+```
+There are effects of species, lifestage, and temperature as well as species x temperature and lifestage x temperature. LEDR per mg protein is lower at 33 degrees than 30 degrees. There is a reduction in rates in ACR at 33C and increase from ambient to 30C in ACR but are stable in POR and POC when viewed by species as a whole. Recruits show a decrease at 33C whereas adults do not when looking at lifestage as a whole.  
+
+At 30C, there are higher rates in recruits in POC but no temperature x lifestage differences in other species. 
+
+## P net per mg prot 
+
+View individual observations. 
+```{r}
+prot_plot5<-pr_wide%>%
+  filter(Pnet_prot<20)%>%
+  
+  ggplot(aes(x=Temperature, y=Pnet_prot, colour = Lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste(P[Net], " (µmol ", O[2], " mg prot"^-1, "hr"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="none"); prot_plot5
+
+ggsave("figures/p_r_rates/Pnet_prot_dots.png", prot_plot5, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+prot_plot6<-pr_wide%>%
+  filter(Pnet_prot<20)%>%
+  filter(!is.na(Pnet_prot))%>%
+  group_by(Species, Lifestage, Temperature)%>%
+  mutate(mean=mean(Pnet_prot, na.rm=TRUE), sd=sd(Pnet_prot, na.rm=TRUE), N=length(Pnet_prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temperature, y=mean, colour = Lifestage, group=Lifestage))+
+  geom_line(aes(group=Lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste(P[Net], " (µmol ", O[2], " mg prot"^-1, "hr"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="none"); prot_plot6
+
+ggsave("figures/p_r_rates/Pnet_prot_means.png", prot_plot6, width = 6, height = 4)
+```
+
+Analyze Pnet per mg prot 
+
+Run anova. 
+```{r}
+model10<-pr_wide%>%
+  filter(Pnet_prot<20)%>%
+  filter(!is.na(Pnet_prot))%>%
+  
+  aov(Pnet_prot~Species*Lifestage*Temperature, data=.)
+
+summary(model10)
+
+emm<-emmeans(model10, ~Lifestage | Species)
+pairs(emm)
+
+emm<-emmeans(model10, ~Lifestage)
+pairs(emm)
+
+emm<-emmeans(model10, ~Species)
+pairs(emm)
+```
+Species and lifestage effects. Recruits are higher than adults in ACR and POC, but not in POR indicated by posthoc. Adults are lower than recruits on average. POR values are lower than ACR and POC on average.   
 
