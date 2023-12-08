@@ -5,8 +5,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
@@ -69,46 +67,118 @@ std_curve <- df %>%
   #mutate(abs562.adj = abs562 - abs562[std == "I"]) %>%       # subtract blank absorbace value from all
   left_join(standards)
 
-
 plot(std_curve$BSA_ug.mL, std_curve$abs562)
-std_curve
+head(std_curve)
 
 std_curve <- std_curve %>%
   filter(Well!="G8") 
+```
 
+Fit a linear model for each plate separately, calculate the coefficients, and then join them back together to match coefficients by plate number. We had one round bottom plate, so we need to treat this plate separately. 
+
+Plate 1 (flat bottom)
+
+```{r}
 ## Fit linear model for standard curve
- mod <- lm(BSA_ug.mL ~ abs562, data = std_curve)
+std_curve_1<-std_curve%>%
+  filter(plate=="20231207_Plate1")
+
+ mod1 <- lm(BSA_ug.mL ~ abs562, data = std_curve_1)
 # coef(mod)
 
 ## Fit nonlinear model for standard curve
-#mod <- nls(formula = BSA_ug.mL ~ z + a * exp(b * abs562), start = list(z = 0, a = 1, b = 1), data = std_curve)
+mod1 <- nls(formula = BSA_ug.mL ~ z + a * exp(b * abs562), start = list(z = 0, a = 1, b = 1), data = std_curve_1)
 
-fitted <- mod %>% broom::augment()
+fitted1 <- mod1 %>% broom::augment()
 
 # Plot standard curve
-std_curve_plot <- std_curve %>%
+std_curve_plot1 <- std_curve_1 %>%
   ggplot(aes(x = abs562, y = BSA_ug.mL)) +
   geom_point(color = "red", size = 3) 
 
-std_curve_plot + 
-  geom_line(data = fitted, aes(x = abs562, y = .fitted)) +
-  labs(title = "Standard curve")
+std_curve_plot1 + 
+  geom_line(data = fitted1, aes(x = abs562, y = .fitted)) +
+  labs(title = "Standard curve - Plate 1")
+```
+
+Plate 2 and 3 (round bottom)
+
+```{r}
+## Fit linear model for standard curve
+std_curve_23<-std_curve%>%
+  filter(!plate=="20231207_Plate1")%>%
+  filter(!c(plate=="20231207_Plate2" & Well=="H4"))%>%
+  filter(!c(plate=="20231207_Plate3" & Well=="F3"))
+
+#mod23 <- lm(BSA_ug.mL ~ abs562, data = std_curve_23)
+# coef(mod)
+
+## Fit nonlinear model for standard curve
+mod23 <- nls(formula = BSA_ug.mL ~ z + a * exp(b * abs562), start = list(z = 0, a = 1, b = 1), data = std_curve_23)
+
+fitted23 <- mod23 %>% broom::augment()
+
+# Plot standard curve
+std_curve_plot23 <- std_curve_23 %>%
+  ggplot(aes(x = abs562, y = BSA_ug.mL)) +
+  geom_point(color = "red", size = 3) 
+
+std_curve_plot23 + 
+  geom_line(data = fitted23, aes(x = abs562, y = .fitted)) +
+  labs(title = "Standard curve - Plate 2 and 3")
 ```
 
 # Calculate protein concentrations
+
+
+We need to do this by plate specific standard curves. 
+
+Plate 1 
 ```{r}
 # Calculate protein concentration for all samples using standard curve
-prot <- df %>%
+prot_plate1 <- df %>%
   unnest(merged) %>%
   filter(!grepl("Standard", colony_id)) %>%                     # Get just samples (not standards)
+  filter(plate=="20231207_Plate1")%>%
   select(plate, Well, colony_id, abs562 = `562:562`) %>%        # Select only needed columns
   filter(!is.na(colony_id)) %>%                                 # Filter out empty wells
   filter(colony_id != "BK") %>%                                 # Filter out blank wells
-  mutate(prot_ug.mL = map_dbl(abs562, ~ predict(mod, newdata = data.frame(abs562 = .))))    # Use standard curve to convert absorbance to protein
+  mutate(prot_ug.mL = map_dbl(abs562, ~ predict(mod1, newdata = data.frame(abs562 = .))))    # Use standard curve to convert absorbance to protein
 
-std_curve_plot + 
-  geom_point(data = prot, aes(x = abs562, y = prot_ug.mL), pch = "X", cex = 5, alpha = 0.3) +
+std_curve_plot1 + 
+  geom_point(data = prot_plate1, aes(x = abs562, y = prot_ug.mL), pch = "X", cex = 5, alpha = 0.3) +
   labs(title = "All samples projected on standard curve")
+```
+POC-R11 is above the standard curve. Come back to this. 
+
+Plate 2-3 
+```{r}
+# Calculate protein concentration for all samples using standard curve
+prot_plate23 <- df %>%
+  unnest(merged) %>%
+  filter(!grepl("Standard", colony_id)) %>%                     # Get just samples (not standards)
+  filter(!plate=="20231207_Plate1")%>%
+  select(plate, Well, colony_id, abs562 = `562:562`) %>%        # Select only needed columns
+  filter(!is.na(colony_id)) %>%                                 # Filter out empty wells
+  filter(colony_id != "BK") %>%                                 # Filter out blank wells
+  mutate(prot_ug.mL = map_dbl(abs562, ~ predict(mod23, newdata = data.frame(abs562 = .))))    # Use standard curve to convert absorbance to protein
+
+std_curve_plot23 + 
+  geom_point(data = prot_plate23, aes(x = abs562, y = prot_ug.mL), pch = "X", cex = 5, alpha = 0.3) +
+  labs(title = "All samples projected on standard curve")
+```
+POC-A6 is just above the standard curve. Come back to this. 
+
+Merge data together 
+```{r}
+prot<-rbind(prot_plate1, prot_plate23)
+```
+
+Average technical replicates for each sample_id. 
+```{r}
+prot<-prot%>%
+  group_by(colony_id)%>%
+  summarise(prot_ug.mL=mean(prot_ug.mL))
 ```
 
 # Normalize to surface area
@@ -137,6 +207,8 @@ prot <- left_join(prot, metadata) %>%
 ```
 
 # Plot results by species and stage
+
+Plot observations. 
 ```{r}
 # Plot all data points with mean ± se
 prot %>%
@@ -149,11 +221,21 @@ prot %>%
   stat_summary(fun.data = mean_cl_normal, fun.args = list(mult = 1),    # Plot standard error
                geom = "errorbar", color = "black", width = 0.5) +
   stat_summary(fun.y = mean, geom = "point", color = "black")           # Plot mean
-
-# Remove outlier data points where absorbance was super low
-#prot <- prot %>%
-#  filter(abs562 > 0.1)
 ```
+
+Plot with labels for sample ID. 
+```{r}
+prot %>%
+  filter(!is.na(species)) %>%
+  ggplot(aes(x = lifestage, y = prot_mg.cm2, color = species)) +
+  facet_wrap(~species)  +
+  coord_cartesian(ylim = c(0, 1.75))+
+  labs(x = "", y = "Total protein (mg/cm2)") +
+  geom_jitter(width = 0.1) +  
+  geom_text(aes(label=colony_id),hjust=0.1, vjust=0.1, size=2)
+```
+POC A6 was above the standard curve. It does not look like an outlier, although it is the lowest observation. 
+POC-R11 was above the standard curve but is not an outlier from what I can tell. It is the highest observation. 
 
 # Write data to output file
 ```{r}
@@ -164,25 +246,6 @@ prot <- prot %>%
   select(colony_id, species, lifestage, prot_mg.cm2) 
 
   write_csv(prot, file = "output/physiology/protein/protein.csv")
-```
-
-# Plot results by species and stage
-```{r}
-# Plot all data points with mean ± se
-prot %>%
-  filter(!is.na(species)) %>%
-  ggplot(aes(x = lifestage, y = prot_mg.cm2, color = species)) +
-  facet_wrap(~species)  +
-  coord_cartesian(ylim = c(0, 1.75))+
-  labs(x = "", y = "Total protein (mg/cm2)") +
-  geom_jitter(width = 0.1) +                                            # Plot all points
-  stat_summary(fun.data = mean_cl_normal, fun.args = list(mult = 1),    # Plot standard error
-               geom = "errorbar", color = "black", width = 0.5) +
-  stat_summary(fun.y = mean, geom = "point", color = "black")           # Plot mean
-
-# Remove outlier data points where absorbance was super low
-#prot <- prot %>%
-#  filter(abs562 > 0.1)
 ```
 
 # Plotting and ANOVA analyses 
@@ -233,7 +296,7 @@ prot_plot2<-prot%>%
 ggsave("figures/physiology/protein/protein_means.png", prot_plot2, width = 6, height = 4)
 ```
 
-View species x lifestage level observations without temperature.  
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
 ```{r}
 prot_plot3<-prot%>%
   group_by(species, lifestage)%>%

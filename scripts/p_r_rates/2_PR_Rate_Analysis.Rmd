@@ -44,7 +44,7 @@ prot<-read_csv(file="output/physiology/protein/protein.csv")%>%rename(sample_id=
 
 Add in surface area and protein into pr data frame 
 ```{r}
-pr$surface.area<-sa$surface.area.cm2[match(pr$sample_id, sa$colony_id)]
+pr$surface.area<-sa$surface.area.cm2[match(pr$sample_id, sa$sample_id)]
 
 pr$prot_mg.cm2<-prot$prot_mg.cm2[match(pr$sample_id, prot$sample_id)]
 hist(pr$prot_mg.cm2)
@@ -320,8 +320,8 @@ pgross_plot_recruit<-pr_wide %>% filter(Lifestage=="Recruit") %>%
   ggplot(aes(x=surface.area, y=Pgross, colour = Temperature))+
   geom_point(position=position_dodge(0.3), alpha=0.3)+
   facet_wrap(~Species, nrow=1, scales="free_x")+
-  #geom_smooth(method="lm", aes(group=Temperature), se=FALSE)+
-  geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+  geom_smooth(method="lm", aes(group=Temperature), se=FALSE)+
+ # geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
   scale_colour_manual(values=c("blue2", "orange", "red3"))+
 
   xlab(expression(bold(paste("Recruit Surface Area (cm"^2, ")")))) +
