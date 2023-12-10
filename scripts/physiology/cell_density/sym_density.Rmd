@@ -11,6 +11,7 @@ if (!require("tidyverse")) install.packages("tidyverse")
 
 # load packages
 library(tidyverse)
+library(emmeans)
 ```
 
 # Import data
@@ -231,3 +232,94 @@ sym_counts %>%
   write_csv(file = "output/physiology/cell_density/symbiont_densities.csv")
 
 ```
+
+# View symbiont cell density normalized to total protein 
+
+Read in cell density and total protein and merge. 
+```{r}
+prot<-read_csv(file="output/physiology/protein/protein.csv")%>%select(colony_id, prot_mg.cm2)
+colnames(prot)[1] <- "sample_id"
+
+sym_counts<-left_join(sym_counts, prot)
+```
+
+Calculate total chl normalized to cells and normalized to protein. 
+```{r}
+sym_counts<-sym_counts%>%
+  mutate(cells.mg.prot=cells.cm2/prot_mg.cm2)
+```
+
+View individual observations. 
+```{r}
+cells_prot_plot1<-sym_counts%>%
+  
+  ggplot(aes(x=Temp.Cat, y=cells.mg.prot, colour = Lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=Lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells mg protein"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); cells_prot_plot1
+
+ggsave("figures/physiology/cell_density/cells_protein_dots.png", cells_prot_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+cells_prot_plot2<-sym_counts%>%
+  group_by(Species, Lifestage, Temp.Cat)%>%
+  mutate(mean=mean(cells.mg.prot, na.rm=TRUE), sd=sd(cells.mg.prot, na.rm=TRUE), N=length(cells.mg.prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = Lifestage, group=Lifestage))+
+  geom_line(aes(group=Lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells mg protein"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); cells_prot_plot2
+
+ggsave("figures/physiology/cell_density/cells_protein_means.png", cells_prot_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
+```{r}
+cells_prot_plot3<-sym_counts%>%
+  group_by(Species, Lifestage)%>%
+  mutate(mean=mean(cells.mg.prot, na.rm=TRUE), sd=sd(cells.mg.prot, na.rm=TRUE), N=length(cells.mg.prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Lifestage, y=mean, colour = Lifestage, group=Lifestage))+
+  geom_line(aes(group=Lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~Species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells mg protein"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); cells_prot_plot3
+
+ggsave("figures/physiology/cell_density/cells_protein_overall_means.png", cells_prot_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA models
+
+```{r}
+model1<-sym_counts%>%
+  
+  aov(cells.mg.prot~Species*Lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ Species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ Species*Lifestage)
+pairs(emm)
+```
+Species effects. ACR values are higher than other species.  

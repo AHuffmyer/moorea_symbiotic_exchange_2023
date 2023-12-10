@@ -421,13 +421,6 @@ pairs(emm)
 ```
 Species and lifestage and species x lifestage effects. Lower chl content in recruits of POC and POR relative to adults. No difference in ACR. Higher in POR overall. 
 
-
-
-
-
-
-
-
 # Normalize to cell density and total protein  
 
 Read in cell density and total protein and merge. 
