@@ -15,6 +15,7 @@ if (!require("broom")) install.packages("broom")
 # load packages
 library(tidyverse)
 library(broom)
+library(emmeans)
 ```
 
 # Import data
@@ -147,7 +148,7 @@ prot_plate1 <- df %>%
 
 std_curve_plot1 + 
   geom_point(data = prot_plate1, aes(x = abs562, y = prot_ug.mL), pch = "X", cex = 5, alpha = 0.3) +
-  labs(title = "All samples projected on standard curve")
+  labs(title = "Plate 1 samples projected on standard curve")
 ```
 POC-R11 is above the standard curve. Come back to this. 
 
@@ -165,7 +166,7 @@ prot_plate23 <- df %>%
 
 std_curve_plot23 + 
   geom_point(data = prot_plate23, aes(x = abs562, y = prot_ug.mL), pch = "X", cex = 5, alpha = 0.3) +
-  labs(title = "All samples projected on standard curve")
+  labs(title = "Plates 2 and 3 samples projected on standard curve")
 ```
 POC-A6 is just above the standard curve. Come back to this. 
 

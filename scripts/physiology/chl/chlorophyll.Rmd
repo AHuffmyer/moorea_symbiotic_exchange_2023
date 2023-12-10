@@ -20,13 +20,9 @@ library(emmeans)
 
 ```
 
-We are missing chl data for POC-A6, POC-A17, ACR-A15, and POR-R11.
-4:17
-ACR-R11 is one of the two that I put a chl tube aside for already in Box S2
-4:18
-I also noticed that POR-A9 has 4 readings where as all the others had 2. Are two of those maybe a typo?
-4:19
-Same is true for POC-R11 and POC-A16, which may be typos of other colonies.
+POR-A9 and ACR-A25 have 4 readings each, not 2 
+
+90 observations - one is an extra or typo maybe? 
 
 
 # Import data
@@ -163,6 +159,16 @@ sample.info<-sample.info%>%rename(colony_id=sample_id)%>%select(colony_id, Temp.
 chl<-right_join(chl, sample.info)
 ```
 
+Check the number in each experimental group to find out which sample is the extra. 
+
+```{r}
+chl %>%
+  group_by(lifestage, species, Temp.Cat)%>%
+  summarise(N=length(chla.ug.cm2))
+
+```
+The adult POR group at 33 has an extra sample. Its POR-A15. 
+
 Calculate total chlorophyll. 
 ```{r}
 chl<-chl%>%
@@ -233,6 +239,21 @@ chla_plot3<-chl%>%
   theme(legend.position="right"); chla_plot3
 
 ggsave("figures/physiology/chlorophyll/chla_overall_means.png", chla_plot3, width = 6, height = 4)
+```
+
+Plot data with sample labels. 
+
+```{r}
+sample_plot<-chl %>%
+
+  ggplot(aes(x = lifestage, y = chla.ug.cm2, colour=lifestage)) +
+  labs(x = "",y = "Chl a ug.cm2") +
+  facet_wrap(~ species) +
+  geom_jitter(aes(colour=lifestage),width = 0.1) +                                            # Plot all points
+  theme_classic() + 
+  geom_text(aes(label=colony_id),hjust=0, vjust=0, size=2);sample_plot
+
+ggsave("figures/physiology/cell_density/cells_samples.png", sample_plot, dpi=300, w=6, h=4, units="in")
 ```
 
 ## Run ANOVA models
