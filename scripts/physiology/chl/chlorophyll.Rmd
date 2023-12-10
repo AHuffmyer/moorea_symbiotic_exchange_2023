@@ -15,8 +15,19 @@ if (!require("plotrix")) install.packages("plotrix")
 # load packages
 library(plotrix)
 library(tidyverse)
+library(ggplot2)
+library(emmeans)
 
 ```
+
+We are missing chl data for POC-A6, POC-A17, ACR-A15, and POR-R11.
+4:17
+ACR-R11 is one of the two that I put a chl tube aside for already in Box S2
+4:18
+I also noticed that POR-A9 has 4 readings where as all the others had 2. Are two of those maybe a typo?
+4:19
+Same is true for POC-R11 and POC-A16, which may be typos of other colonies.
+
 
 # Import data
 ```{r}
@@ -105,7 +116,6 @@ chl <- filter(chl, !colony_id %in% c("NA", "BK"))
 # write chlorophyll data to file
 chl %>%
   select(colony_id, chla.ug.cm2, chlc2.ug.cm2) %>%
-  mutate(timepoint="timepoint1")%>%
   filter(!is.na(chla.ug.cm2))%>%
   filter(!is.na(chlc2.ug.cm2))%>%
   write_csv(path = "output/chlorophyll.csv")
@@ -114,9 +124,11 @@ chl %>%
 # Plot results by species and site
 ```{r, eval = TRUE}
 # Join with sample metadata
-metadata <- read_csv("data/field_collection/collection_metadata.csv") 
+metadata <- read_csv("data/field_collection/collection_metadata.csv") %>% select(sample_id, species, lifestage)
 colnames(metadata)[1] <- "colony_id"
-chl <- right_join(chl, metadata, by = "colony_id")
+chl <- left_join(chl, metadata, by = "colony_id")
+
+chl<-chl%>%filter(!is.na(file))
 
 # Plot chlorophyll a
 chl %>%
@@ -139,5 +151,455 @@ chl %>%
   stat_summary(fun.y = mean, geom = "point", color = "black")           # Plot mean
 ```
 
+No obvious outliers. 
 
+# Plotting and ANOVA analyses 
+
+Attach temperature metadata. 
+```{r}
+sample.info <- read_csv(file = "data/p_r_rates/pr_sample_metadata.csv")
+sample.info<-sample.info%>%rename(colony_id=sample_id)%>%select(colony_id, Temp.Cat)%>%filter(!grepl("BK", colony_id))
+
+chl<-right_join(chl, sample.info)
+```
+
+Calculate total chlorophyll. 
+```{r}
+chl<-chl%>%
+  mutate(total.ug.cm2=chla.ug.cm2+chlc2.ug.cm2)
+```
+
+Remove na's for now. 
+```{r}
+chl<-chl%>%
+  filter(!is.na(file))
+```
+
+# Chl a normalized to surface area 
+
+View individual observations. 
+```{r}
+chla_plot1<-chl%>%
+  
+  ggplot(aes(x=Temp.Cat, y=chla.ug.cm2, colour = lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Chlorophyll a (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chla_plot1
+
+ggsave("figures/physiology/chlorophyll/chla_dots.png", chla_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+chla_plot2<-chl%>%
+  group_by(species, lifestage, Temp.Cat)%>%
+  mutate(mean=mean(chla.ug.cm2, na.rm=TRUE), sd=sd(chla.ug.cm2, na.rm=TRUE), N=length(chla.ug.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Chlorophyll a (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chla_plot2
+
+ggsave("figures/physiology/chlorophyll/chla_means.png", chla_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
+```{r}
+chla_plot3<-chl%>%
+  group_by(species, lifestage)%>%
+  mutate(mean=mean(chla.ug.cm2, na.rm=TRUE), sd=sd(chla.ug.cm2, na.rm=TRUE), N=length(chla.ug.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=lifestage, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+  ylab(expression(bold(paste("Chlorophyll a (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chla_plot3
+
+ggsave("figures/physiology/chlorophyll/chla_overall_means.png", chla_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA models
+
+```{r}
+model1<-chl%>%
+  
+  aov(chla.ug.cm2~species*lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ lifestage | species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species*lifestage)
+pairs(emm)
+```
+Species and lifestage and species x lifestage effects. Lower chl content in recruits of POC and POR relative to adults. No difference in ACR. Higher in POR overall. 
+
+
+# Chl c2 normalized to surface area 
+
+View individual observations. 
+```{r}
+chlc2_plot1<-chl%>%
+  
+  ggplot(aes(x=Temp.Cat, y=chlc2.ug.cm2, colour = lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Chlorophyll c2 (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chla_plot1
+
+ggsave("figures/physiology/chlorophyll/chlc2_dots.png", chlc2_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+chlc2_plot2<-chl%>%
+  group_by(species, lifestage, Temp.Cat)%>%
+  mutate(mean=mean(chlc2.ug.cm2, na.rm=TRUE), sd=sd(chlc2.ug.cm2, na.rm=TRUE), N=length(chlc2.ug.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Chlorophyll c2 (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chlc2_plot2
+
+ggsave("figures/physiology/chlorophyll/chlc2_means.png", chlc2_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
+```{r}
+chlc2_plot3<-chl%>%
+  group_by(species, lifestage)%>%
+  mutate(mean=mean(chlc2.ug.cm2, na.rm=TRUE), sd=sd(chlc2.ug.cm2, na.rm=TRUE), N=length(chlc2.ug.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=lifestage, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+  ylab(expression(bold(paste("Chlorophyll c2 (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chlc2_plot3
+
+ggsave("figures/physiology/chlorophyll/chla_overall_means.png", chlc2_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA models
+
+```{r}
+model1<-chl%>%
+  
+  aov(chlc2.ug.cm2~species*lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ lifestage | species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species*lifestage)
+pairs(emm)
+```
+Species and lifestage and species x lifestage effects. Lower chl content in recruits of POC and POR relative to adults. No difference in ACR. Higher in POR overall. 
+
+
+
+
+
+
+# Total chl normalized to surface area 
+
+View individual observations. 
+```{r}
+chlt_plot1<-chl%>%
+  
+  ggplot(aes(x=Temp.Cat, y=total.ug.cm2, colour = lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Total chlorophyll (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chlt_plot1
+
+ggsave("figures/physiology/chlorophyll/total_chl_dots.png", chlt_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+chlt_plot2<-chl%>%
+  group_by(species, lifestage, Temp.Cat)%>%
+  mutate(mean=mean(total.ug.cm2, na.rm=TRUE), sd=sd(total.ug.cm2, na.rm=TRUE), N=length(total.ug.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Total chlorophyll (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chlt_plot2
+
+ggsave("figures/physiology/chlorophyll/total_chl_means.png", chlt_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
+```{r}
+chlt_plot3<-chl%>%
+  group_by(species, lifestage)%>%
+  mutate(mean=mean(total.ug.cm2, na.rm=TRUE), sd=sd(total.ug.cm2, na.rm=TRUE), N=length(total.ug.cm2), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=lifestage, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+  ylab(expression(bold(paste("Total chlorophyll (µg cm"^-2, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); chlt_plot3
+
+ggsave("figures/physiology/chlorophyll/total_chl_overall_means.png", chlt_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA models
+
+```{r}
+model1<-chl%>%
+  
+  aov(total.ug.cm2~species*lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ lifestage | species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species*lifestage)
+pairs(emm)
+```
+Species and lifestage and species x lifestage effects. Lower chl content in recruits of POC and POR relative to adults. No difference in ACR. Higher in POR overall. 
+
+
+
+
+
+
+
+
+# Normalize to cell density and total protein  
+
+Read in cell density and total protein and merge. 
+```{r}
+cells<-read_csv(file="output/physiology/cell_density/symbiont_densities.csv")%>%select(sample_id, cells.cm2)
+colnames(cells)[1] <- "colony_id"
+
+chl<-left_join(chl, cells)
+
+prot<-read_csv(file="output/physiology/protein/protein.csv")%>%select(colony_id, prot_mg.cm2)
+
+chl<-left_join(chl, prot)
+```
+
+Calculate total chl normalized to cells and normalized to protein. 
+```{r}
+chl<-chl%>%
+  mutate(total.ugchl.mg.prot=total.ug.cm2/prot_mg.cm2)%>%
+  mutate(total.ugchl.cell=total.ug.cm2/cells.cm2)
+```
+
+# Total chl normalized to cell density 
+
+View individual observations. 
+```{r}
+total_cell_plot1<-chl%>%
+  
+  ggplot(aes(x=Temp.Cat, y=total.ugchl.cell, colour = lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Total chlorophyll (µg cell"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); total_cell_plot1
+
+ggsave("figures/physiology/chlorophyll/total_chl_cell_dots.png", total_cell_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+total_cell_plot2<-chl%>%
+  group_by(species, lifestage, Temp.Cat)%>%
+  mutate(mean=mean(total.ugchl.cell, na.rm=TRUE), sd=sd(total.ugchl.cell, na.rm=TRUE), N=length(total.ugchl.cell), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Total chlorophyll (µg cell"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); total_cell_plot2
+
+ggsave("figures/physiology/chlorophyll/total_chl_cell_means.png", total_cell_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
+```{r}
+total_cell_plot3<-chl%>%
+  group_by(species, lifestage)%>%
+  mutate(mean=mean(total.ugchl.cell, na.rm=TRUE), sd=sd(total.ugchl.cell, na.rm=TRUE), N=length(total.ugchl.cell), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=lifestage, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+  ylab(expression(bold(paste("Total chlorophyll (µg cell"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); total_cell_plot3
+
+ggsave("figures/physiology/chlorophyll/total_chl_cell_overall_means.png", total_cell_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA models
+
+```{r}
+model1<-chl%>%
+  
+  aov(total.ugchl.cell~species*lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ lifestage | species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species*lifestage)
+pairs(emm)
+```
+Species x lifestage effects. POR recruits are lower then adults for chl per symbiont cell. 
+
+# Total chl normalized to total protein
+
+View individual observations. 
+```{r}
+total_prot_plot1<-chl%>%
+  
+  ggplot(aes(x=Temp.Cat, y=total.ugchl.mg.prot, colour = lifestage))+
+  geom_point(position=position_dodge(0.3), alpha=1)+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_smooth(method="loess", aes(group=lifestage), se=FALSE)+
+  #geom_smooth(method="lm", aes(group=Species), se=FALSE, colour="black")+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Total chlorophyll (mg protein"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); total_prot_plot1
+
+ggsave("figures/physiology/chlorophyll/total_chl_prot_dots.png", total_prot_plot1, width = 6, height = 4)
+```
+
+View mean observations. 
+```{r}
+total_prot_plot2<-chl%>%
+  group_by(species, lifestage, Temp.Cat)%>%
+  mutate(mean=mean(total.ugchl.mg.prot, na.rm=TRUE), sd=sd(total.ugchl.mg.prot, na.rm=TRUE), N=length(total.ugchl.mg.prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=Temp.Cat, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Temperature °C"))) +
+  ylab(expression(bold(paste("Total chlorophyll (mg protein"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); total_prot_plot2
+
+ggsave("figures/physiology/chlorophyll/total_chl_prot_means.png", total_prot_plot2, width = 6, height = 4)
+```
+
+View species x lifestage level observations without temperature as there does not appear to be an effect.  
+```{r}
+total_prot_plot3<-chl%>%
+  group_by(species, lifestage)%>%
+  mutate(mean=mean(total.ugchl.mg.prot, na.rm=TRUE), sd=sd(total.ugchl.mg.prot, na.rm=TRUE), N=length(total.ugchl.mg.prot), se=sd/sqrt(N))%>%
+  
+  ggplot(aes(x=lifestage, y=mean, colour = lifestage, group=lifestage))+
+  geom_line(aes(group=lifestage), colour="darkgray", linewidth=1, position=position_dodge(0.3))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), colour="darkgray", width=0, position=position_dodge(0.3))+
+  facet_wrap(~species, nrow=1, scales="free_x")+
+  geom_point(position=position_dodge(0.3), alpha=1, size=3)+
+
+  xlab(expression(bold("Lifestage"))) +
+  ylab(expression(bold(paste("Total chlorophyll (mg protein"^-1, ")")))) +
+  theme_classic()+
+  theme(legend.position="right"); total_prot_plot3
+
+ggsave("figures/physiology/chlorophyll/total_chl_prot_overall_means.png", total_prot_plot3, width = 6, height = 4)
+```
+
+## Run ANOVA models
+
+```{r}
+model1<-chl%>%
+  
+  aov(total.ugchl.mg.prot~species*lifestage*Temp.Cat, data=.)
+
+summary(model1)
+
+emm<-emmeans(model1, ~ lifestage | species)
+pairs(emm)
+
+emm<-emmeans(model1, ~ species*lifestage)
+pairs(emm)
+```
+Species x lifestage effects. ACR recruit chl per unit protein are higher than adults. No difference in other species. Trend for ACR higher than other species. 
 
