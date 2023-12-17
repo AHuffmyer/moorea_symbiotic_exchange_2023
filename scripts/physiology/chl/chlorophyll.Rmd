@@ -20,7 +20,7 @@ library(emmeans)
 
 ```
 
-POR-A9 and ACR-A25 have 4 readings each, not 2 
+POR-A9 and ACR-A25 have 4 readings each, not 2. These are because samples were taken from both A and B tubes. 
 
 90 observations - one is an extra or typo maybe? 
 
@@ -85,6 +85,12 @@ df <- df %>%
         #chlc2.ug.ml = (27.09 * adj630) - (3.63 * adj663))
 ```
 
+Remove any "B" replicates, these were taken from a duplicate slurry tube. All other metrics are taken only from the first replicate/A tube. 
+```{r}
+df<-df%>%
+  filter(!str_detect(colony_id, "B"))
+
+```
 
 # Normalize to surface area
 ```{r}
@@ -165,9 +171,8 @@ Check the number in each experimental group to find out which sample is the extr
 chl %>%
   group_by(lifestage, species, Temp.Cat)%>%
   summarise(N=length(chla.ug.cm2))
-
 ```
-The adult POR group at 33 has an extra sample. Its POR-A15. 
+All are correct. 
 
 Calculate total chlorophyll. 
 ```{r}
@@ -175,7 +180,7 @@ chl<-chl%>%
   mutate(total.ug.cm2=chla.ug.cm2+chlc2.ug.cm2)
 ```
 
-Remove na's for now. 
+Remove na's. None exist. 
 ```{r}
 chl<-chl%>%
   filter(!is.na(file))
@@ -253,7 +258,7 @@ sample_plot<-chl %>%
   theme_classic() + 
   geom_text(aes(label=colony_id),hjust=0, vjust=0, size=2);sample_plot
 
-ggsave("figures/physiology/cell_density/cells_samples.png", sample_plot, dpi=300, w=6, h=4, units="in")
+ggsave("figures/physiology/chlorophyll/chl_samples.png", sample_plot, dpi=300, w=6, h=4, units="in")
 ```
 
 ## Run ANOVA models
@@ -528,17 +533,17 @@ ggsave("figures/physiology/chlorophyll/total_chl_cell_overall_means.png", total_
 ```{r}
 model1<-chl%>%
   
-  aov(total.ugchl.cell~species*lifestage*Temp.Cat, data=.)
+  aov(total.ugchl.cell~species*lifestage*as.factor(Temp.Cat), data=.)
 
 summary(model1)
 
-emm<-emmeans(model1, ~ lifestage | species)
+emm<-emmeans(model1, ~ Temp.Cat | species)
 pairs(emm)
 
-emm<-emmeans(model1, ~ species*lifestage)
+emm<-emmeans(model1, ~ species*Temp.Cat)
 pairs(emm)
 ```
-Species x lifestage effects. POR recruits are lower then adults for chl per symbiont cell. 
+Species x temperature effects. 
 
 # Total chl normalized to total protein
 

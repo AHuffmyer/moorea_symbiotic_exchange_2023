@@ -131,7 +131,6 @@ std_curve_plot23 +
 
 # Calculate protein concentrations
 
-
 We need to do this by plate specific standard curves. 
 
 Plate 1 
@@ -178,7 +177,7 @@ prot<-rbind(prot_plate1, prot_plate23)
 Average technical replicates for each sample_id. 
 ```{r}
 prot<-prot%>%
-  group_by(colony_id)%>%
+  group_by(colony_id, plate)%>%
   summarise(prot_ug.mL=mean(prot_ug.mL))
 ```
 
