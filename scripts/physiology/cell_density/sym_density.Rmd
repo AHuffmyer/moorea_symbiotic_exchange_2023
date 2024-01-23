@@ -222,6 +222,15 @@ Significant relationship between cell density and recruit size for each species.
 
 Visually there is a strong positive relationship between recruit size and cell density per unit size in POC and POR, but not ACR. 
 
+```{r}
+library(lsmeans)
+
+lm.lst <- lstrends(model3, ~ Species, var = "surface.area.cm2")
+lm.lst          # slope estimates and CIs
+pairs(lm.lst)   # comparisons
+```
+
+
 # Output files
 
 Output data to file.  
