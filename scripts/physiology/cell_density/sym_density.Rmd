@@ -120,7 +120,31 @@ plot1<-sym_counts %>%
       title = element_text(size=14, face="bold")
       ); plot1
 
+plot1a<-sym_counts %>%
+    filter(!is.na(cells.cm2))%>%
+    group_by(Species, Lifestage)%>%
+    dplyr::summarise(mean=mean(cells.cm2, na.rm=TRUE), sd=sd(cells.cm2, na.rm=TRUE), N=length(cells.cm2), se=sd/sqrt(N))%>%
+    
+    ggplot(., aes(x = Lifestage, y = mean / 10^6, group=Lifestage, color=Lifestage)) +
+    facet_grid(~Species)+
+    geom_hline(yintercept=0, linetype="dashed", color="black", size=0.75)+
+    geom_point(aes(group=Lifestage), size=6, position = position_dodge(0.4)) + 
+    geom_errorbar(aes(ymin=(mean/ 10^6)-(se/ 10^6), ymax=(mean/ 10^6)+(se/ 10^6), group=Lifestage), width=0, linetype="solid", position=position_dodge(0.4), size=0.8, color="black")+
+    xlab("Lifestage") + 
+    ylab(expression(bold(paste("Cell Density (10"^6, "cells cm"^-2, ")")))) +
+    ggtitle("")+
+    theme_classic() + 
+    theme(
+      legend.position="none",
+      axis.title=element_text(face="bold", size=16),
+      axis.text=element_text(size=12, color="black"), 
+      legend.title=element_text(face="bold", size=14), 
+      legend.text=element_text(size=12), 
+      title = element_text(size=14, face="bold")
+      ); plot1a
+
 ggsave("figures/physiology/cell_density/cells_means.png", plot1, dpi=300, w=6, h=4, units="in")
+ggsave("figures/physiology/cell_density/cells_means_color.png", plot1a, dpi=300, w=6, h=4, units="in")
 ```
 
 Plot by individual observation with colour by temperature exposure. 
