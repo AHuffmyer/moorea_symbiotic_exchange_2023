@@ -1,0 +1,81 @@
+LOCUS       FR729326                 933 bp    DNA     linear   INV 25-JUL-2016
+DEFINITION  Pocillopora sp. A JFF-2010 mitochondrial partial atp6 gene for ATP
+            synthase subunit 6 and partial ORF1 for hypothetical protein,
+            isolate 05Clip001.
+ACCESSION   FR729326
+VERSION     FR729326.1
+KEYWORDS    .
+SOURCE      mitochondrion Pocillopora sp. A JFF-2010
+  ORGANISM  Pocillopora sp. A JFF-2010
+            Eukaryota; Metazoa; Cnidaria; Anthozoa; Hexacorallia; Scleractinia;
+            Astrocoeniina; Pocilloporidae; Pocillopora.
+REFERENCE   1
+  AUTHORS   Flot,J.F., Couloux,A. and Tillier,S.
+  TITLE     Haplowebs as a graphical tool for delimiting species: a revival of
+            Doyle's 'field for recombination' approach and its application to
+            the coral genus Pocillopora in Clipperton
+  JOURNAL   BMC Evol. Biol. 10, 372 (2010)
+   PUBMED   21118572
+  REMARK    Publication Status: Online-Only
+REFERENCE   2  (bases 1 to 933)
+  AUTHORS   Flot,J.F.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-NOV-2010) to the INSDC. Flot J.F., Courant Research
+            Centre Geobiology, University of Goettingen, Goldschmidtstr. 3,
+            D-37077 Goettingen, GERMANY
+FEATURES             Location/Qualifiers
+     source          1..933
+                     /organism="Pocillopora sp. A JFF-2010"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /isolate="05Clip001"
+                     /db_xref="taxon:930993"
+                     /geo_loc_name="Clipperton Island"
+                     /collection_date="2005"
+     gene            <1..182
+                     /gene="atp6"
+     CDS             <1..182
+                     /gene="atp6"
+                     /codon_start=3
+                     /transl_table=4
+                     /product="ATP synthase subunit 6"
+                     /protein_id="CBY43988.1"
+                     /db_xref="GOA:E5BC48"
+                     /db_xref="InterPro:IPR000568"
+                     /db_xref="UniProtKB/TrEMBL:E5BC48"
+                     /translation="NLSAGHLLFAILAGFGLVFKFAMFIMVFITLLEVAVAIIQAYVF
+                     CLLVQIYLTDTIFLH"
+     gene            185..>933
+                     /gene="ORF1"
+     CDS             185..>933
+                     /gene="ORF1"
+                     /codon_start=1
+                     /transl_table=4
+                     /product="hypothetical protein"
+                     /protein_id="CBY43989.1"
+                     /db_xref="GOA:E5BC49"
+                     /db_xref="UniProtKB/TrEMBL:E5BC49"
+                     /translation="MTAVEIFLCTIIGISLTVNYGFGIGWYSSSSQAWLRHQMGIDGT
+                     DMVHPWAYFNYVRQHSIARNVGVQVNLDSTEGPNDVGVQVNQESEQSVDVVFIELEGR
+                     RVPVRGVNLHVERRGYLDNRSNQEGVENSLGDQFEDVAFLGGSTSTLTPESVNRGAPS
+                     GNIRNVLSDSLIERRGQDQTLSEIKVETPPGASRGGRWASINQGEALRENKVEIGVLR
+                     ENKVEIDEVVGSTFSSIPLEVEGMMAHVWNQ"
+ORIGIN      
+        1 caaatctttc tgccgggcat cttttatttg caattttggc aggatttggt ctggttttta
+       61 aatttgcaat gtttataatg gtgtttatta cgctattaga ggtggcagtt gcaataatcc
+      121 aggcctatgt gttttgtctg ttggtacaaa tttatttaac tgatacaatt tttttacatt
+      181 aaaaatgaca gccgtagaaa tttttttatg cacaattata ggtatatcgt taacagtgaa
+      241 ttatggattt ggtattgggt gatatagtag ctcttctcaa gcctggttaa ggcaccaaat
+      301 gggcatagac ggtacagata tggtccatcc ttgagcttat tttaattatg tgcgccagca
+      361 ttctattgct cgtaatgttg gggtacaagt gaatctagat tcaactgaag gaccaaatga
+      421 tgttggggta caagtgaatc aagagtctga acagtctgtg gatgttgttt ttatagaatt
+      481 ggaagggcga agggtccccg taaggggggt gaatctacat gttgagcggc gtggttattt
+      541 ggataatcgg tctaatcaag aaggtgttga gaatagttta ggagatcaat ttgaagatgt
+      601 ggctttttta ggggggagta caagtacact tacaccagaa agtgtaaata ggggagctcc
+      661 aagtggtaat ataagaaatg tattaagtga ttcattaata gagaggagag gccaagacca
+      721 aactttaagt gaaataaagg tagaaacacc tccaggtgct tcaaggggtg gccgatgagc
+      781 cagtataaat caaggtgagg ctttaagaga aaacaaggta gaaattgggg ttttaagaga
+      841 aaacaaagta gaaattgatg aggtagttgg ctcgactttt agttcgatcc ccttagaggt
+      901 tgaagggatg atggctcatg tgtgaaatca att
+//
+

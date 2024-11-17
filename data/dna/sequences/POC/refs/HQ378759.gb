@@ -1,0 +1,60 @@
+LOCUS       HQ378759                 829 bp    DNA     linear   INV 03-APR-2014
+DEFINITION  Pocillopora sp. Type 2 ND5 gene, intron; and ATP synthase subunit 6
+            (ATP6) gene, partial cds; mitochondrial.
+ACCESSION   HQ378759
+VERSION     HQ378759.1
+KEYWORDS    .
+SOURCE      mitochondrion Pocillopora sp. Type 2
+  ORGANISM  Pocillopora sp. Type 2
+            Eukaryota; Metazoa; Cnidaria; Anthozoa; Hexacorallia; Scleractinia;
+            Astrocoeniina; Pocilloporidae; Pocillopora.
+REFERENCE   1  (bases 1 to 829)
+  AUTHORS   Pinzon,J.H. and LaJeunesse,T.C.
+  TITLE     Species delimitation of common reef corals in the genus Pocillopora
+            using nucleotide sequence phylogenies, population genetics and
+            symbiosis ecology
+  JOURNAL   Mol. Ecol. 20 (2), 311-325 (2011)
+   PUBMED   21091563
+REFERENCE   2  (bases 1 to 829)
+  AUTHORS   Pinzon,J.H. and LaJeunesse,T.C.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (07-OCT-2010) Biology, Penn State University, 208 Mueller
+            Lab, University Park, PA 16802, USA
+FEATURES             Location/Qualifiers
+     source          1..829
+                     /organism="Pocillopora sp. Type 2"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /strain="Type 2"
+                     /db_xref="taxon:932078"
+     gene            <1..>829
+                     /gene="ND5"
+     intron          <1..>829
+                     /gene="ND5"
+     gene            <1..149
+                     /gene="ATP6"
+     CDS             <1..149
+                     /gene="ATP6"
+                     /codon_start=3
+                     /transl_table=4
+                     /product="ATP synthase subunit 6"
+                     /protein_id="ADR82032.1"
+                     /translation="LAGFGLVFKFAMFIMVFITLLEVAVAIIQAYVFCLLVLIYLTDT
+                     IFLH"
+ORIGIN      
+        1 ttttggcagg atttggtctg gtttttaaat ttgcaatgtt tataatggtg tttattacgc
+       61 tattagaggt ggcagttgca ataatacagg cctatgtgtt ttgtctgttg gtactaattt
+      121 atttaactga tacaattttt ttacattaaa aatgacaacc gtagaaattt tattatgcac
+      181 aattgtaggt atatcgttaa cggtgaatta tggatttggt attgggtgat atggtagttc
+      241 ttctcaagcc tggttaaggc accaaatggg catagacggt gcagatatcg tccatccttg
+      301 agcttatttt agttatgtgc gcgagcatta tattgctcgt aatgttgggg tacaagtgaa
+      361 tctagattca actgaaggac caaatgatgt tggggtacaa gtgaatcaag agtctgaaca
+      421 gtctgtggat gttgttttta tagaattgga agggcgaagg gtccccgtaa ggggggtgaa
+      481 tctacatgtt gagcggcgtg gttatttgga taatcggtct aatcaagaag gtgttgagaa
+      541 tagtttagga gatcaatttg aagatgtggc ttttttaggg gggagtacaa gtacaattac
+      601 accagaaagt gtaaataggg gcgctccaag tggtaatata agaaatgtat taagtgattc
+      661 attaatagag aggagaggcc aagaccaaac tttaagtgaa ataaaggtag aaacacctcc
+      721 aggtgcttca aggggtggcc gatgagccag tataaatcaa ggtgaggctt taagagaaaa
+      781 caaggtagaa attggggttt taagagaaaa caaagtagaa attgatgag
+//
+

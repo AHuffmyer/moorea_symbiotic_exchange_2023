@@ -1,0 +1,74 @@
+LOCUS       MW619885                 855 bp    DNA     linear   INV 23-MAR-2021
+DEFINITION  Pocillopora meandrina isolate 45C28 ATP synthase subunit 6 and
+            hypothetical protein genes, partial cds; mitochondrial.
+ACCESSION   MW619885
+VERSION     MW619885.1
+KEYWORDS    .
+SOURCE      mitochondrion Pocillopora meandrina
+  ORGANISM  Pocillopora meandrina
+            Eukaryota; Metazoa; Cnidaria; Anthozoa; Hexacorallia; Scleractinia;
+            Astrocoeniina; Pocilloporidae; Pocillopora.
+REFERENCE   1  (bases 1 to 855)
+  AUTHORS   Burgess,S.C., Johnston,E.C., Wyatt,A.S.J., Leichter,J.J. and
+            Edmunds,P.J.
+  TITLE     Response diversity in corals: hidden differences in bleaching
+            mortality among cryptic Pocillopora species
+  JOURNAL   Ecology, e03324 (2021) In press
+   PUBMED   33690896
+  REMARK    Publication Status: Available-Online prior to print
+REFERENCE   2  (bases 1 to 855)
+  AUTHORS   Johnston,E.C.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (16-FEB-2021) Ecology and Evolution, Florida State
+            University, 600 W College Ave, Tallahassee, FL 32306, USA
+COMMENT     ##Assembly-Data-START##
+            Sequencing Technology :: Sanger dideoxy sequencing
+            ##Assembly-Data-END##
+FEATURES             Location/Qualifiers
+     source          1..855
+                     /organism="Pocillopora meandrina"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /isolate="45C28"
+                     /db_xref="taxon:46732"
+                     /haplotype="1c"
+                     /geo_loc_name="French Polynesia: Moorea"
+                     /collection_date="2019"
+                     /note="PCR_primers=fwd_name: FATP6.1, rev_name: RORF;
+                     PCR_primers=fwd_name: fwd_seq_tttgggsattcgtttagcag,
+                     rev_name: rev_seq_sccaatatgttaaacascatgtca"
+     CDS             <1..149
+                     /codon_start=3
+                     /transl_table=4
+                     /product="ATP synthase subunit 6"
+                     /protein_id="QTC27897.1"
+                     /translation="LAGFGLVFKFAMFIMVFITLLEVAVAIIQAYVFCLLVQIYLTDT
+                     IFLH"
+     CDS             152..>855
+                     /codon_start=1
+                     /transl_table=4
+                     /product="hypothetical protein"
+                     /protein_id="QTC27898.1"
+                     /translation="MTAVEIFLCTIIGISLTVNYGFGIGWYSSSSQAWLRHQMGIDGT
+                     DMVHPWAYFNYVRQHSIARNVGVQVNLDSTEGPNDVGVQVNQESEQSVDVVFIELEGR
+                     RVPVRGVNLHVERRGYLDNRSNQEGVENSLGDQFEDVAFLGGSTSTLTPESVNRGAPS
+                     GNIRNVLSDSLIERRGQDQTLSEIEVETPPGASRGGRWASINQGEALRENKVEIGVLR
+                     ENKVEIDEVVGSTFSS"
+ORIGIN      
+        1 ttttggcagg atttggtctg gtttttaaat ttgcaatgtt tataatggtg tttattacgc
+       61 tattagaggt ggcagttgca ataatccagg cctatgtgtt ttgtctgttg gtacaaattt
+      121 atttaactga tacaattttt ttacattaaa aatgacagcc gtagaaattt ttttatgcac
+      181 aattataggt atatcgttaa cagtgaatta tggatttggt attgggtgat atagtagctc
+      241 ttctcaagcc tggttaaggc accaaatggg catagacggt acagatatgg tccatccttg
+      301 agcttatttt aattatgtgc gccagcattc tattgctcgt aatgttgggg tacaagtgaa
+      361 tctagattca actgaaggac caaatgatgt tggggtacaa gtgaatcaag agtctgaaca
+      421 gtctgtggat gttgttttta tagaattgga agggcgaagg gtccccgtaa ggggggtgaa
+      481 tctacatgtt gagcggcgtg gttatttgga taatcggtct aatcaagaag gtgttgagaa
+      541 tagtttagga gatcaatttg aagatgtggc ttttttaggg gggagtacaa gtacacttac
+      601 accagaaagt gtaaataggg gagctccaag tggtaatata agaaatgtat taagtgattc
+      661 attaatagag aggagaggcc aagaccaaac tttaagtgaa atagaggtag aaacacctcc
+      721 aggtgcttca aggggtggcc gatgagccag tataaatcaa ggtgaggctt taagagaaaa
+      781 caaggtagaa attggggttt taagagaaaa caaagtagaa attgatgagg tagttggctc
+      841 gacttttagt tcgat
+//
+

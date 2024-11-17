@@ -1,0 +1,62 @@
+LOCUS       JX994083                 829 bp    DNA     linear   INV 08-AUG-2013
+DEFINITION  Pocillopora sp. Type 3 haplotype e ND5 gene, partial sequence; and
+            ATP synthase subunit 6 (ATP6) gene, partial cds; mitochondrial.
+ACCESSION   JX994083
+VERSION     JX994083.1
+KEYWORDS    .
+SOURCE      mitochondrion Pocillopora sp. Type 3
+  ORGANISM  Pocillopora sp. Type 3
+            Eukaryota; Metazoa; Cnidaria; Anthozoa; Hexacorallia; Scleractinia;
+            Astrocoeniina; Pocilloporidae; Pocillopora.
+REFERENCE   1  (bases 1 to 829)
+  AUTHORS   Pinzon,J.H., Sampayo,E., Cox,E., Chauka,L.J., Chen,C.A.,
+            Voolstra,C.R. and LaJeunesse,T.C.
+  TITLE     Blind to morphology: genetics identifies several widespread
+            ecologically common species and few endemics among Indo-Pacific
+            cauliflower corals (Pocillopora, Scleractinia)
+  JOURNAL   J. Biogeogr. 40 (8), 1595-1608 (2013)
+REFERENCE   2  (bases 1 to 829)
+  AUTHORS   Pinzon,J.H.
+  TITLE     Direct Submission
+  JOURNAL   Submitted (23-OCT-2012) Biology, U of Texas Arlington TX, 501 S.
+            Nedderman LSB 228, Arlington, TX 76019, USA
+FEATURES             Location/Qualifiers
+     source          1..829
+                     /organism="Pocillopora sp. Type 3"
+                     /organelle="mitochondrion"
+                     /mol_type="genomic DNA"
+                     /strain="Type 3"
+                     /db_xref="taxon:932081"
+                     /haplotype="e"
+                     /collection_date="23-Oct-2012"
+     gene            <1..>829
+                     /gene="ND5"
+     intron          <1..>829
+                     /gene="ND5"
+     gene            <1..149
+                     /gene="ATP6"
+     CDS             <1..149
+                     /gene="ATP6"
+                     /codon_start=3
+                     /transl_table=4
+                     /product="ATP synthase subunit 6"
+                     /protein_id="AFZ41122.1"
+                     /translation="LAGFGLVFKFAMFIMVFITLLEVAVAIIQAYVFCLLVQIYLTDT
+                     IFLH"
+ORIGIN      
+        1 ttttggcagg atttggtctg gtttttaaat ttgcaatgtt tataatggtg tttattacgc
+       61 tattagaggt ggcagttgca ataatacagg cctatgtgtt ttgtctgttg gtacaaattt
+      121 atttaacaga tacaattttt ttacattaaa aatgaccgcc gtagaaattt ttttatgcac
+      181 aattataggg atgtcgctag ctgtgaatta tggatttggt attgggtgat atagtagttc
+      241 ttctcaagcc tggttaagac accaaatggg catagacggt gcagatacgg tccatccttg
+      301 agcttatttt aattatgtgc gccagcattc tattgctcgt aatgttgggg tacaagtgaa
+      361 tctagattca actgaaggac caaatgatgt tggggtacaa gtgaatcaag agtctgaaca
+      421 gtctgtggat gttgttttta tagaattgga agggcgaagg gtccccgtaa ggggggtgaa
+      481 tctacatgtt gagcggcgtg gtcatttgga taatcggtct aatcaagaag gtgttgagaa
+      541 tagtttagga gatcaatttg aagatgtggc ttttttaggg gggagtacaa gtacaattac
+      601 accagaaagt gtaaataggg gcgctccaag tggtaatata agaaatgtat taagtgattc
+      661 attaatagag aggagaggcc aagaccaaac tttaagtgaa ataaaggtag aaacacctcc
+      721 aggtgcttca aggggtggcc gatgagccag tataaatcaa ggtgaggctt taagagaaaa
+      781 caaggtagaa attggggttt taagagaaaa caaagtagaa attgatgag
+//
+
