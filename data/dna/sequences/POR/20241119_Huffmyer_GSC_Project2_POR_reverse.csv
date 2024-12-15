@@ -1,6 +1,6 @@
 ﻿Sample ID,Sample Name,Well,Template Type,PCR Template Volume (µl),H20 Volume (µl),Primer Volume (µl),Primer Name,Notes
 AH121,68,A1,PCR,,,,zH4Fr,Samples do NOT have water or primer added; only cleaned PCR product in plate; total volume = approx. 120 uL in each well
-AH122,124,B1,PCR,,,,zH4Fr,
+AH122,124,B1,PCR,,,,zH4Fr,"Renamed in files as ""SampleName_R"""
 AH123,138,C1,PCR,,,,zH4Fr,
 AH124,81,D1,PCR,,,,zH4Fr,
 AH125,225,E1,PCR,,,,zH4Fr,
