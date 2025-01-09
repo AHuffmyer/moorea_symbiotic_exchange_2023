@@ -1,0 +1,119 @@
+---
+title: "Species distribution"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+## install packages if you dont already have them
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("plotrix")) install.packages("plotrix")
+
+# load packages
+library(plotrix)
+library(tidyverse)
+library(ggplot2)
+library(emmeans)
+library(readxl)
+
+```
+
+## Pocillopora recruits 
+
+Read in data for species identity. 
+
+```{r}
+data<-read_xlsx(path="data/dna/dna_metadata.xlsx")%>%filter(genus=="Pocillopora")%>%filter(lifestage=="Recruit")
+```
+
+View levels of species 
+```{r}
+levels(as.factor(data$species))
+```
+
+Plot species of recruits.  
+
+Set colors 
+```{r}
+# set the colors for plotting
+# cols.haplotype <- cbind.data.frame(Haplotype = factor(c(“Haplotype 10”,
+#                                             “Haplotype 1a”,
+#                                             “Haplotype 3”,
+#                                             #“P. grandis”,
+#                                             “Haplotype 2”,
+#                                             “Haplotype 11",
+#                                             “Haplotype 5a”,
+#                                             “Haplotype 8a”)),
+#                          Color = c(“#D55E00”,
+#                                    “#0072B2",
+#                                    “#E69F00”,
+#                                    #“#56B4E9",
+#                                    “#009E73”,
+#                                    “#009E73",
+#                                    “#E63946”,
+#                                    “#CC79A7"))
+#
+# color_mapping <- setNames(cols.haplotype$Color, cols.haplotype$Haplotype)
+
+cols.species <- cbind.data.frame(Species = factor(c("P. tuahiniensis",
+                                           # “P. meandrina P. grandis”,
+                                            #“P. verrucosa”,
+                                            "P. grandis",
+                                            "P. effusa",
+                                            "P. acuta",
+                                            "P. meandrina")),
+                         Color = c("#D55E00",
+                                   #“#0072B2”,
+                                   #“#E69F00",
+                                   "#56B4E9",
+                                   "#009E73",
+                                   "#E63946",
+                                   "#CC79A7"))
+                                   
+color_mapping <- setNames(cols.species$Color, cols.species$Species)
+```
+
+Plot stacked bar plot. 
+
+```{r}
+# Count the occurrences of each species
+species_count <- as.data.frame(table(data$species))
+colnames(species_count) <- c("species", "count")
+
+species_count$percentage <- (species_count$count / sum(species_count$count)) * 100
+
+# Plot the stacked bar plot
+ggplot(species_count, aes(x = "", y = percentage, colour = species, fill = species)) +
+  geom_bar(stat = "identity") +
+  labs(x = NULL, y = "Percentage of Recruits", fill = "Species", color= "Species", 
+       title = "Pocillopora recruits") +
+  theme_minimal() +
+  scale_color_manual(values=color_mapping)+
+  scale_fill_manual(values=color_mapping)+
+  theme_classic()
+```
+
+```{r}
+# Count the occurrences of each species
+species_count <- as.data.frame(table(data$species))
+colnames(species_count) <- c("species", "count")
+
+species_count$percentage <- (species_count$count / sum(species_count$count)) * 100
+
+# Plot the stacked bar plot
+ggplot(species_count, aes(x = "", y = count, colour = species, fill = species)) +
+  geom_bar(stat = "identity") +
+  labs(x = NULL, y = "Counts of Recruits", fill = "Species", color= "Species", 
+       title = "Pocillopora recruits") +
+  theme_minimal() +
+  scale_color_manual(values=color_mapping)+
+  scale_fill_manual(values=color_mapping)+
+  theme_classic()
+```
+
+
+
+
