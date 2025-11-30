@@ -1,0 +1,923 @@
+---
+title: Moorea 2023 metabolomics analysis 
+author: "AS Huffmyer"
+date: '2025'
+output:
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  pdf_document:
+    keep_tex: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+TOP PRIORITIES FIRST: 
+
+- Glucose, F6P, pyruvate, a-ketoglutarate, ADP, concentration and labeling 
+- NAD+, NADH, NADP+, NADPH concentration and labeling
+- Glutamine and glutamate concentration and labeling 
+- Arginine-glutamine concentration and labeling 
+
+This script analyzes stable isotope metabolomic data for the 2023 Moorea symbiotic nutritional exchange project.  
+
+# Set Up 
+
+Set up workspace, set options, and load required packages.    
+```{r}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r, warning=FALSE, message=FALSE}
+## install packages if you dont already have them in your library
+if ("tidyverse" %in% rownames(installed.packages()) == 'FALSE') install.packages('tidyverse') 
+if ("vegan" %in% rownames(installed.packages()) == 'FALSE') install.packages('vegan') 
+if ("ggplot2" %in% rownames(installed.packages()) == 'FALSE') install.packages('ggplot2') 
+if ("factoextra" %in% rownames(installed.packages()) == 'FALSE') install.packages('factoextra') 
+if ("ggfortify" %in% rownames(installed.packages()) == 'FALSE') install.packages('ggfortify') 
+if ("naniar" %in% rownames(installed.packages()) == 'FALSE') install.packages('naniar') 
+if ("cowplot" %in% rownames(installed.packages()) == 'FALSE') install.packages('cowplot') 
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+if ("mixOmics" %in% rownames(installed.packages()) == 'FALSE') BiocManager::install("mixOmics") 
+if ("RVAideMemoire" %in% rownames(installed.packages()) == 'FALSE') install.packages('RVAideMemoire') 
+if ("VennDiagram" %in% rownames(installed.packages()) == 'FALSE') install.packages('VennDiagram') 
+if ("broom" %in% rownames(installed.packages()) == 'FALSE') install.packages('broom') 
+if ("lme4" %in% rownames(installed.packages()) == 'FALSE') install.packages('lme4') 
+if ("lmerTest" %in% rownames(installed.packages()) == 'FALSE') install.packages('lmerTest') 
+if ("readxl" %in% rownames(installed.packages()) == 'FALSE') install.packages('readxl') 
+if ("emmeans" %in% rownames(installed.packages()) == 'FALSE') install.packages('emmeans') 
+if ("multcomp" %in% rownames(installed.packages()) == 'FALSE') install.packages('multcomp') 
+if ("data.table" %in% rownames(installed.packages()) == 'FALSE') install.packages('data.table') 
+
+#load packages
+library("ggplot2")
+library('vegan')
+library('factoextra')
+library('ggfortify')
+library('naniar')
+library('cowplot')
+library("mixOmics")
+library("tidyverse")
+library("RVAideMemoire")
+library("VennDiagram")
+library("broom")
+library("lme4")
+library("lmerTest")
+library("readxl")
+library("emmeans")
+library("multcomp")
+library("data.table")
+```
+
+# Load Data 
+
+Load positive polarity data.  
+```{r}
+#load pool size quantified as total intensity for each metabolite, this dataset will require median normalization
+pos_pool_size<-read_xlsx("data/isotopes/positive/Peaks_Pos.xlsx", sheet="Pool Size")
+
+#load per atom basis for labeling proportions, this dataset is proportion data, so no normalization is necessary
+pos_enrichment<-read_xlsx("data/isotopes/positive/Peaks_Pos.xlsx", sheet="Enrichment")
+
+#load proportion labeling by Number Carbons Labeled, this dataset is proportion data, so no normalization is necessary
+pos_fractions<-read_csv("data/isotopes/positive/Fractions.csv")
+```
+
+Load in negative polarity data. 
+```{r}
+#load pool size quantified as total intensity for each metabolite, this dataset will require median normalization
+neg_pool_size<-read_xlsx("data/isotopes/negative/Peaks_Neg.xlsx", sheet="Pool Size")
+
+#load per atom basis for labeling proportions, this dataset is proportion data, so no normalization is necessary
+neg_enrichment<-read_xlsx("data/isotopes/negative/Peaks_Neg.xlsx", sheet="Enrichment")
+
+#load proportion labeling by Number Carbons Labeled, this dataset is proportion data, so no normalization is necessary
+neg_fractions<-read_csv("data/isotopes/negative/Fractions.csv")
+```
+
+95 compounds in the negative dataset and 78 compounds in the positive dataset.  
+
+Check for overlap in compounds between positive and negative. 
+
+```{r}
+intersect(pos_pool_size$Compound, neg_pool_size$Compound)
+setdiff(pos_pool_size$Compound, neg_pool_size$Compound)
+setdiff(neg_pool_size$Compound, pos_pool_size$Compound)
+```
+
+We have 52 compounds that are in both data sets. 
+
+# Prepare pool size data 
+
+## Normalization 
+
+### Positive data 
+
+```{r}
+str(pos_pool_size)
+```
+
+Normalize pool size to the sample median to account for any variation in the number of larvae across samples. 
+```{r}
+pos_pool_size <- pos_pool_size %>%
+  mutate(across(`12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`, ~ .x / median(.x, na.rm = TRUE))) #normalize the intensity values to the columns median to account for any variation in larval number in each sample 
+```
+
+```{r}
+pos_pool_size<-pos_pool_size%>%
+  select(!starts_with("Blank"))
+```
+
+Mutate the data to be in long rather than wide format and keep only relevant columns.  
+
+```{r}
+pos_pool_size <- pos_pool_size %>% 
+  pivot_longer(names_to = "sample", values_to="intensity.norm", `12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`)%>%
+  select(c(Compound, sample, intensity.norm))
+
+head(pos_pool_size)
+```
+
+Add metadata column with isotope, treatment, tank, and tube ID. 
+```{r}
+pos_pool_size<-pos_pool_size%>%
+  separate(sample, c("isotope", "lifestage", "species", "treatment","rep"), sep="_", remove = FALSE)
+
+#convert to factors 
+pos_pool_size$isotope<-as.factor(pos_pool_size$isotope)
+pos_pool_size$lifestage<-as.factor(pos_pool_size$lifestage)
+pos_pool_size$species<-as.factor(pos_pool_size$species)
+pos_pool_size$treatment<-as.factor(pos_pool_size$treatment)
+pos_pool_size$rep<-as.factor(pos_pool_size$rep)
+pos_pool_size$Compound<-as.factor(pos_pool_size$Compound)
+```
+
+Check distribution of data.  
+```{r}
+hist(pos_pool_size$intensity.norm)
+hist(log(1+pos_pool_size$intensity.norm))
+```
+
+Since distribution is very skewed, add log normalized column. 
+```{r}
+pos_pool_size$log.intensity.norm<-log(1+pos_pool_size$intensity.norm)
+```
+
+Clean metabolite names and remove standards.  
+
+Clean any names that have (+HAc), rename to just include the metabolite name.  
+
+```{r, echo=FALSE, results=FALSE}
+levels(pos_pool_size$Compound)
+length(levels(pos_pool_size$Compound)) #we have 78 metabolites in our dataset 
+```
+
+### Negative data 
+
+```{r}
+str(neg_pool_size)
+```
+
+Normalize pool size to the sample median to account for any variation in the number of larvae across samples. 
+```{r}
+neg_pool_size <- neg_pool_size %>%
+  mutate(across(`12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`, ~ .x / median(.x, na.rm = TRUE))) #normalize the intensity values to the columns median to account for any variation in larval number in each sample 
+```
+
+```{r}
+neg_pool_size<-neg_pool_size%>%
+  select(!starts_with("Blank"))
+```
+
+Mutate the data to be in long rather than wide format and keep only relevant columns.  
+
+```{r}
+neg_pool_size <- neg_pool_size %>% 
+  pivot_longer(names_to = "sample", values_to="intensity.norm", `12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`)%>%
+  select(c(Compound, sample, intensity.norm))
+
+head(neg_pool_size)
+```
+
+Add metadata column with isotope, treatment, tank, and tube ID. 
+```{r}
+neg_pool_size<-neg_pool_size%>%
+  separate(sample, c("isotope", "lifestage", "species", "treatment","rep"), sep="_", remove = FALSE)
+
+#convert to factors 
+neg_pool_size$isotope<-as.factor(neg_pool_size$isotope)
+neg_pool_size$lifestage<-as.factor(neg_pool_size$lifestage)
+neg_pool_size$species<-as.factor(neg_pool_size$species)
+neg_pool_size$treatment<-as.factor(neg_pool_size$treatment)
+neg_pool_size$rep<-as.factor(neg_pool_size$rep)
+neg_pool_size$Compound<-as.factor(neg_pool_size$Compound)
+```
+
+Check distribution of data.  
+```{r}
+hist(neg_pool_size$intensity.norm)
+hist(log(1+neg_pool_size$intensity.norm))
+```
+
+Since distribution is very skewed, add log normalized column. 
+```{r}
+neg_pool_size$log.intensity.norm<-log(1+neg_pool_size$intensity.norm)
+```
+
+Clean metabolite names and remove standards.  
+
+```{r, echo=FALSE, results=FALSE}
+levels(neg_pool_size$Compound)
+length(levels(neg_pool_size$Compound)) #we have 95 metabolites in our dataset 
+
+neg_pool_size<-neg_pool_size%>%
+  mutate(Compound = str_remove(Compound, pattern=fixed(' (+HAc)')))%>% #rename any with +HAc to remove the +HAc
+  mutate(Compound = as.factor(Compound))
+
+neg_pool_size<- droplevels(neg_pool_size)
+length(levels(neg_pool_size$Compound))
+levels(neg_pool_size$Compound) #names are now cleaned
+```
+
+## Reconcile overlap between data sets and combine 
+
+```{r}
+intersect(pos_pool_size$Compound, neg_pool_size$Compound)
+
+str(pos_pool_size)
+str(neg_pool_size)
+```
+
+There are 53 compounds represented in both data sets. Display the mean concentration of each compound and select the polarity with the highest concentration.  
+
+Add a polarity column and combine datasets. 
+
+```{r}
+pos_pool_size <- pos_pool_size %>%
+  mutate(polarity = "pos")
+
+levels(pos_pool_size$Compound)
+
+neg_pool_size <- neg_pool_size %>%
+  mutate(polarity = "neg")
+
+levels(neg_pool_size$Compound)
+
+all_polarities <- full_join(pos_pool_size, neg_pool_size)
+
+levels(all_polarities$Compound)
+
+setdiff(neg_pool_size$Compound, all_polarities$Compound)
+setdiff(all_polarities$Compound, neg_pool_size$Compound)
+setdiff(all_polarities$Compound, pos_pool_size$Compound)
+setdiff(pos_pool_size$Compound, all_polarities$Compound)
+```
+
+Calculate mean signal for each metabolite from normalized intensity values. 
+```{r}
+compound_by_polarity <- all_polarities %>%
+  group_by(Compound, polarity) %>%
+  summarise(
+    mean_intensity = mean(intensity.norm, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+Select the polarity with the highest intensity. 
+```{r}
+compound_choice <- compound_by_polarity %>%
+  group_by(Compound) %>%
+  slice_max(mean_intensity, n = 1, with_ties = FALSE) %>%
+  ungroup()
+```
+
+View a list of which value was selected. 
+```{r}
+metabolite_polarity_reference <- compound_choice %>%
+  arrange(Compound)
+
+pos_list<-metabolite_polarity_reference%>%filter(polarity=="pos")%>%droplevels()%>%pull(Compound)
+pos_list
+#60 from positive 
+
+neg_list<-metabolite_polarity_reference%>%filter(polarity=="neg")%>%droplevels()%>%pull(Compound)
+neg_list
+
+intersect(pos_list, neg_list)
+setdiff(pos_list, neg_list)
+setdiff(neg_list, pos_list)
+#60 from negative, no overlap 
+```
+
+Combine all 
+```{r}
+merged_metabolites <- all_polarities %>%
+  inner_join(
+    compound_choice %>% select(Compound, polarity),
+    by = c("Compound", "polarity")
+  )
+
+merged_metabolites
+levels(merged_metabolites$Compound)
+```
+
+We have 120 total compounds. 
+
+We will use the lists we made to select polarities for the other data sets as well (enrichment and fractions).  
+
+
+
+# Prepare enrichment data 
+
+We do not need to perform normalization as these are proportion data.  
+
+```{r}
+str(pos_enrichment)
+str(neg_enrichment)
+```
+
+## Prepare metadata 
+
+### Positive data 
+
+```{r}
+pos_enrichment<-pos_enrichment%>%
+  select(!starts_with("Blank"))
+```
+
+Mutate the data to be in long rather than wide format and keep only relevant columns.  
+
+```{r}
+pos_enrichment <- pos_enrichment %>% 
+  pivot_longer(names_to = "sample", values_to="enrichment", `12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`)%>%
+  select(c(Compound, sample, enrichment))
+
+head(pos_enrichment)
+```
+
+Add metadata column with isotope, treatment, tank, and tube ID. 
+```{r}
+pos_enrichment<-pos_enrichment%>%
+  separate(sample, c("isotope", "lifestage", "species", "treatment","rep"), sep="_", remove = FALSE)
+
+#convert to factors 
+pos_enrichment$isotope<-as.factor(pos_enrichment$isotope)
+pos_enrichment$lifestage<-as.factor(pos_enrichment$lifestage)
+pos_enrichment$species<-as.factor(pos_enrichment$species)
+pos_enrichment$treatment<-as.factor(pos_enrichment$treatment)
+pos_enrichment$rep<-as.factor(pos_enrichment$rep)
+pos_enrichment$Compound<-as.factor(pos_enrichment$Compound)
+```
+
+Check compound names. 
+
+```{r}
+levels(pos_enrichment$Compound)
+```
+
+All are clean. 78 total compounds. 
+
+Check distribution of data.  
+```{r}
+hist(pos_enrichment$enrichment)
+```
+
+Bound between 0 and 1 as expected.  
+
+```{r}
+str(pos_enrichment)
+```
+
+### Negative data 
+
+```{r}
+neg_enrichment<-neg_enrichment%>%
+  select(!starts_with("Blank"))
+```
+
+Mutate the data to be in long rather than wide format and keep only relevant columns.  
+
+```{r}
+neg_enrichment <- neg_enrichment %>% 
+  pivot_longer(names_to = "sample", values_to="enrichment", `12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`)%>%
+  select(c(Compound, sample, enrichment))
+
+head(neg_enrichment)
+```
+
+Add metadata column with isotope, treatment, tank, and tube ID. 
+```{r}
+neg_enrichment<-neg_enrichment%>%
+  separate(sample, c("isotope", "lifestage", "species", "treatment","rep"), sep="_", remove = FALSE)
+
+#convert to factors 
+neg_enrichment$isotope<-as.factor(neg_enrichment$isotope)
+neg_enrichment$lifestage<-as.factor(neg_enrichment$lifestage)
+neg_enrichment$species<-as.factor(neg_enrichment$species)
+neg_enrichment$treatment<-as.factor(neg_enrichment$treatment)
+neg_enrichment$rep<-as.factor(neg_enrichment$rep)
+neg_enrichment$Compound<-as.factor(neg_enrichment$Compound)
+```
+
+Check compound names. 
+
+```{r}
+levels(neg_enrichment$Compound)
+length(levels(neg_enrichment$Compound)) #we have 95 metabolites in our dataset 
+
+neg_enrichment<-neg_enrichment%>%
+  mutate(Compound = str_remove(Compound, pattern=fixed(' (+HAc)')))%>% #rename any with +HAc to remove the +HAc
+  mutate(Compound = as.factor(Compound))
+
+neg_enrichment<- droplevels(neg_enrichment)
+length(levels(neg_enrichment$Compound))
+levels(neg_enrichment$Compound) #names are now cleaned
+```
+
+All are clean. 95 total compounds. 
+
+Check distribution of data.  
+```{r}
+hist(neg_enrichment$enrichment)
+```
+
+Bound between 0 and 1 as expected.  
+
+```{r}
+str(neg_enrichment)
+```
+
+## Reconcile overlap between data sets and combine 
+
+```{r}
+intersect(pos_enrichment$Compound, neg_enrichment$Compound)
+
+str(pos_enrichment)
+str(neg_enrichment)
+```
+
+There are 53 compounds represented in both data sets. Select representatives from the lists we made above for pool size.  
+
+```{r}
+pos_enrichment<-pos_enrichment%>%
+  filter(Compound %in% pos_list)
+
+neg_enrichment<-neg_enrichment%>%
+  filter(Compound %in% neg_list)
+
+merged_enrichment<-bind_rows(pos_enrichment, neg_enrichment)
+levels(merged_enrichment$Compound)
+```
+
+There are 120 total compounds as expected.  
+
+# Prepare fraction data 
+
+We do not need to perform normalization as these are proportion data.  
+
+```{r}
+str(pos_fractions)
+str(neg_fractions)
+```
+
+Replace dashes with underscores in column names. 
+
+```{r}
+pos_fractions <- pos_fractions %>%
+  rename_with(~ str_replace_all(.x, "-", "_"))
+
+neg_fractions <- neg_fractions %>%
+  rename_with(~ str_replace_all(.x, "-", "_"))
+```
+
+## Prepare metadata 
+
+### Positive data 
+
+```{r}
+pos_fractions<-pos_fractions%>%
+  select(!starts_with("Blank"))
+```
+
+Mutate the data to be in long rather than wide format and keep only relevant columns.  
+
+```{r}
+pos_fractions <- pos_fractions %>% 
+  pivot_longer(names_to = "sample", values_to="enrichment", `12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`)%>%
+  select(c(Compound, Label, sample, enrichment))
+
+head(pos_fractions)
+```
+
+Add metadata column with isotope, treatment, tank, and tube ID. 
+```{r}
+pos_fractions<-pos_fractions%>%
+  separate(sample, c("isotope", "lifestage", "species", "treatment","rep"), sep="_", remove = FALSE)
+
+#convert to factors 
+pos_fractions$isotope<-as.factor(pos_fractions$isotope)
+pos_fractions$lifestage<-as.factor(pos_fractions$lifestage)
+pos_fractions$species<-as.factor(pos_fractions$species)
+pos_fractions$treatment<-as.factor(pos_fractions$treatment)
+pos_fractions$rep<-as.factor(pos_fractions$rep)
+pos_fractions$Compound<-as.factor(pos_fractions$Compound)
+```
+
+Check compound names. 
+
+```{r}
+levels(pos_fractions$Compound)
+```
+
+All are clean. 78 total compounds. 
+
+Check distribution of data.  
+```{r}
+hist(pos_fractions$enrichment)
+```
+
+Bound between 0 and 1 as expected.  
+
+```{r}
+str(pos_fractions)
+```
+
+### Negative data 
+
+```{r}
+neg_fractions<-neg_fractions%>%
+  select(!starts_with("Blank"))
+```
+
+Mutate the data to be in long rather than wide format and keep only relevant columns.  
+
+```{r}
+neg_fractions <- neg_fractions %>% 
+  pivot_longer(names_to = "sample", values_to="enrichment", `12C_Ctrl_Acropora_unlabeled_1`:`13C_Recruit_Pocillopora_dark_1`)%>%
+  select(c(Compound, Label, sample, enrichment))
+
+head(neg_fractions)
+```
+
+Add metadata column with isotope, treatment, tank, and tube ID. 
+```{r}
+neg_fractions<-neg_fractions%>%
+  separate(sample, c("isotope", "lifestage", "species", "treatment","rep"), sep="_", remove = FALSE)
+
+#convert to factors 
+neg_fractions$isotope<-as.factor(neg_fractions$isotope)
+neg_fractions$lifestage<-as.factor(neg_fractions$lifestage)
+neg_fractions$species<-as.factor(neg_fractions$species)
+neg_fractions$treatment<-as.factor(neg_fractions$treatment)
+neg_fractions$rep<-as.factor(neg_fractions$rep)
+neg_fractions$Compound<-as.factor(neg_fractions$Compound)
+```
+
+Check compound names. 
+
+```{r}
+levels(neg_fractions$Compound)
+```
+
+95 total compounds. 
+
+Check distribution of data.  
+```{r}
+hist(neg_fractions$enrichment)
+```
+
+Bound between 0 and 1 as expected.  
+
+```{r}
+str(neg_fractions)
+```
+
+Check compound names. 
+
+```{r}
+levels(neg_fractions$Compound)
+length(levels(neg_fractions$Compound)) #we have 95 metabolites in our dataset 
+
+neg_fractions<-neg_fractions%>%
+  mutate(Compound = str_remove(Compound, pattern=fixed(' (+HAc)')))%>% #rename any with +HAc to remove the +HAc
+  mutate(Compound = as.factor(Compound))
+
+neg_fractions<- droplevels(neg_fractions)
+length(levels(neg_fractions$Compound))
+levels(neg_fractions$Compound) #names are now cleaned
+```
+
+## Reconcile overlap between data sets and combine 
+
+```{r}
+intersect(pos_fractions$Compound, neg_fractions$Compound)
+
+str(pos_fractions)
+str(neg_fractions)
+```
+
+There are 53 compounds represented in both data sets. Select representatives from the lists we made above for pool size.  
+
+```{r}
+pos_fractions<-pos_fractions%>%
+  filter(Compound %in% pos_list)
+
+neg_fractions<-neg_fractions%>%
+  filter(Compound %in% neg_list)
+
+merged_fractions<-bind_rows(pos_fractions, neg_fractions)
+levels(merged_fractions$Compound)
+```
+
+There are 120 total compounds as expected.  
+
+# Carbon metabolism: Glucose, G6P, F6P, pyruvate, a-ketoglutarate, fructose, lactate
+
+## Pool size 
+
+Subset to desired compounds 
+
+```{r}
+carbon_list<-c("Glucose", "Glucose-6-phosphate", "Fructose-6-phosphate", "Pyruvate", "a-ketoglutarate", "Fructose", "Lactate")
+```
+
+```{r}
+carbon<-merged_metabolites%>%
+  filter(Compound %in% carbon_list)
+
+head(carbon)
+```
+
+Filter out controls and blanks for now. 
+```{r}
+carbon<-carbon%>%
+  filter(!isotope=="12C")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!treatment=="dark")
+```
+
+Plot
+
+```{r}
+plot1<-carbon%>%
+         
+  ggplot(., aes(y=log.intensity.norm, x=treatment, color=lifestage)) + 
+  facet_wrap(~species*Compound, scales="free")+
+  geom_boxplot(position=position_dodge(0.8))+
+  geom_point(position=position_dodge(0.8))+
+  scale_fill_manual(values=c("gray", "purple"))+
+  theme_classic()+
+  xlab("Temperature")+
+  ylab("log(Normalized Pool Size)")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot1
+```
+
+## Enrichment
+
+Subset to desired compounds 
+
+```{r}
+carbon2<-merged_enrichment%>%
+  filter(Compound %in% carbon_list)
+
+head(carbon2)
+```
+
+Filter out controls and blanks for now. 
+```{r}
+carbon2<-carbon2%>%
+  filter(!isotope=="12C")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!treatment=="dark")
+```
+
+Plot
+
+```{r}
+plot2<-carbon2%>%
+         
+  ggplot(., aes(y=enrichment, x=treatment, color=lifestage)) + 
+  facet_wrap(~species*Compound, scales="free")+
+  geom_boxplot(position=position_dodge(0.8))+
+  geom_point(position=position_dodge(0.8))+
+  scale_fill_manual(values=c("gray", "purple"))+
+  theme_classic()+
+  xlab("Temperature")+
+  ylab("Enrichment")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot2
+```
+
+# Energy molecules: ADP, AMP, dAMP, NAD+, NADH, NADP+, NADPH concentration and labeling
+
+## Pool size 
+
+Subset to desired compounds 
+
+```{r}
+energy_list<-c("ADP", "AMP", "dAMP", "NAD+", "NADH", "NADP+", "NADPH")
+```
+
+```{r}
+energy<-merged_metabolites%>%
+  filter(Compound %in% energy_list)
+
+head(energy)
+```
+
+Filter out controls and blanks for now. 
+```{r}
+energy<-energy%>%
+  filter(!isotope=="12C")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!treatment=="dark")
+```
+
+Plot
+
+```{r}
+plot3<-energy%>%
+         
+  ggplot(., aes(y=log.intensity.norm, x=treatment, color=lifestage)) + 
+  facet_wrap(~species*Compound, scales="free")+
+  geom_boxplot(position=position_dodge(0.8))+
+  geom_point(position=position_dodge(0.8))+
+  scale_fill_manual(values=c("gray", "purple"))+
+  theme_classic()+
+  xlab("Temperature")+
+  ylab("log(Normalized Pool Size)")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot3
+```
+
+## Enrichment
+
+Subset to desired compounds 
+
+```{r}
+energy2<-merged_enrichment%>%
+  filter(Compound %in% energy_list)
+
+head(energy2)
+```
+
+Filter out controls and blanks for now. 
+```{r}
+energy2<-energy2%>%
+  filter(!isotope=="12C")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!treatment=="dark")
+```
+
+Plot
+
+```{r}
+plot4<-energy2%>%
+         
+  ggplot(., aes(y=enrichment, x=treatment, color=lifestage)) + 
+  facet_wrap(~species*Compound, scales="free")+
+  geom_boxplot(position=position_dodge(0.8))+
+  geom_point(position=position_dodge(0.8))+
+  scale_fill_manual(values=c("gray", "purple"))+
+  theme_classic()+
+  xlab("Temperature")+
+  ylab("Enrichment")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot4
+```
+
+# Nitrogen metabolism: Glutamine and glutamate and dipeptide concentration and labeling 
+
+## Pool size 
+
+Subset to desired compounds 
+
+```{r}
+nitrogen_list<-c("Glutamine", "Glutamate", "Arginine-Glutamine")
+```
+
+```{r}
+nitrogen<-merged_metabolites%>%
+  filter(Compound %in% nitrogen_list)
+
+head(nitrogen)
+```
+
+Filter out controls and blanks for now. 
+```{r}
+nitrogen<-nitrogen%>%
+  filter(!isotope=="12C")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!treatment=="dark")
+```
+
+Plot
+
+```{r}
+plot5<-nitrogen%>%
+         
+  ggplot(., aes(y=log.intensity.norm, x=treatment, color=lifestage)) + 
+  facet_wrap(~species*Compound, scales="free")+
+  geom_boxplot(position=position_dodge(0.8))+
+  geom_point(position=position_dodge(0.8))+
+  scale_fill_manual(values=c("gray", "purple"))+
+  theme_classic()+
+  xlab("Temperature")+
+  ylab("log(Normalized Pool Size)")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot5
+```
+
+## Enrichment
+
+Subset to desired compounds 
+
+```{r}
+nitrogen2<-merged_enrichment%>%
+  filter(Compound %in% nitrogen_list)
+
+head(nitrogen2)
+```
+
+Filter out controls and blanks for now. 
+```{r}
+nitrogen2<-nitrogen2%>%
+  filter(!isotope=="12C")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!treatment=="dark")
+```
+
+Plot
+
+```{r}
+plot6<-nitrogen2%>%
+         
+  ggplot(., aes(y=enrichment, x=treatment, color=lifestage)) + 
+  facet_wrap(~species*Compound, scales="free")+
+  geom_boxplot(position=position_dodge(0.8))+
+  geom_point(position=position_dodge(0.8))+
+  scale_fill_manual(values=c("gray", "purple"))+
+  theme_classic()+
+  xlab("Temperature")+
+  ylab("Enrichment")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot6
+```
+
+
+
+
+
+
