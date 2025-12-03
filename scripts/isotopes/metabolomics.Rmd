@@ -14,12 +14,11 @@ editor_options:
   chunk_output_type: console
 ---
 
-TOP PRIORITIES FIRST: 
+OVERALL: 
 
-- Glucose, F6P, pyruvate, a-ketoglutarate, ADP, concentration and labeling 
-- NAD+, NADH, NADP+, NADPH concentration and labeling
-- Glutamine and glutamate concentration and labeling 
-- Arginine-glutamine concentration and labeling 
+- Lifestage specific metabolism
+- Lifestage specific energetic stress/strategies
+- Species specific response to temp
 
 This script analyzes stable isotope metabolomic data for the 2023 Moorea symbiotic nutritional exchange project.  
 
@@ -666,10 +665,9 @@ Plot
 plot1<-carbon%>%
          
   ggplot(., aes(y=log.intensity.norm, x=treatment, color=lifestage)) + 
-  facet_wrap(~species*Compound, scales="free")+
+  facet_wrap(~Compound*species, scales="free")+
   geom_boxplot(position=position_dodge(0.8))+
   geom_point(position=position_dodge(0.8))+
-  scale_fill_manual(values=c("gray", "purple"))+
   theme_classic()+
   xlab("Temperature")+
   ylab("log(Normalized Pool Size)")+
@@ -682,6 +680,111 @@ plot1<-carbon%>%
     axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
     axis.title = element_text(face="bold")
     );plot1
+```
+
+Run test using linear models. 
+
+```{r}
+results_acropora <- carbon %>%
+  filter(species == "Acropora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term == "treatment") %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(p_adj_fdr)
+
+results_acropora
+
+```
+
+No effect of treatment on Acropora metabolites. 
+
+```{r}
+results_pocillopora <- carbon %>%
+  filter(species == "Pocillopora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ treatment*lifestage, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("treatment", "lifestage", "treatment:lifestage")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results_pocillopora
+
+```
+
+Glucose is affected by treatment in Pocillopora. a-ketoglutarate (lower in larvae), fructose (lower in larvae), glucose-6-phosphate (higher in larvae), lactate (higher in larvae), and pyruvate (higher in larvae) are affected by lifestage.
+
+### Plot glucose only 
+
+```{r}
+plot_glucose<-carbon%>%
+  filter(Compound=="Glucose")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(log.intensity.norm, na.rm=TRUE), se=sd(log.intensity.norm, na.rm=TRUE)/length(log.intensity.norm))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Glucose Concentration")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_glucose
+
+ggsave(filename="figures/isotopes/glucose_concentration.png", plot_glucose, width=6, height=5)
+```
+
+### Plot pyruvate only 
+
+```{r}
+plot_pyruvate<-carbon%>%
+  filter(Compound=="Pyruvate")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(log.intensity.norm, na.rm=TRUE), se=sd(log.intensity.norm, na.rm=TRUE)/length(log.intensity.norm))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Pyruvate Concentration")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_pyruvate
+
+ggsave(filename="figures/isotopes/pyruvate_concentration.png", plot_pyruvate, width=6, height=5)
 ```
 
 ## Enrichment
@@ -710,7 +813,7 @@ Plot
 plot2<-carbon2%>%
          
   ggplot(., aes(y=enrichment, x=treatment, color=lifestage)) + 
-  facet_wrap(~species*Compound, scales="free")+
+  facet_wrap(~Compound*species, scales="free")+
   geom_boxplot(position=position_dodge(0.8))+
   geom_point(position=position_dodge(0.8))+
   scale_fill_manual(values=c("gray", "purple"))+
@@ -726,6 +829,111 @@ plot2<-carbon2%>%
     axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
     axis.title = element_text(face="bold")
     );plot2
+```
+
+Run test using linear models. 
+
+```{r}
+results_acropora <- carbon2 %>%
+  filter(species == "Acropora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term == "treatment") %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(p_adj_fdr)
+
+results_acropora
+
+```
+
+Treatment affects glucose-6-phosphate in Acropora. It is depleted at 33°C.
+
+```{r}
+results_pocillopora <- carbon2 %>%
+  filter(species == "Pocillopora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ treatment*lifestage, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("treatment", "lifestage", "treatment:lifestage")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results_pocillopora
+
+```
+
+No effect of temperature in Pocillopora. a-ketoglutarate (less enriched in larvae), fructose-6-phosphate (less enriched in larvae), glucose (less enriched in larvae), glucoses-6-phosphate (less enriched in larvae), lactatae (less enriched in larvae), and pyruvate (less enriched in larvae) are affected by lifestage. 
+
+### Plot glucose only 
+
+```{r}
+plot_glucose2<-carbon2%>%
+  filter(Compound=="Glucose")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(enrichment, na.rm=TRUE), se=sd(enrichment, na.rm=TRUE)/length(enrichment))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Glucose Enrichment")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_glucose2
+
+ggsave(filename="figures/isotopes/glucose_enrichment.png", plot_glucose2, width=6, height=5)
+```
+
+### Plot pyruvate only 
+
+```{r}
+plot_pyruvate2<-carbon2%>%
+  filter(Compound=="Pyruvate")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(enrichment, na.rm=TRUE), se=sd(enrichment, na.rm=TRUE)/length(enrichment))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Pyruvate Enrichment")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_pyruvate2
+
+ggsave(filename="figures/isotopes/pyruvate_enrichment.png", plot_pyruvate2, width=6, height=5)
 ```
 
 # Energy molecules: ADP, AMP, dAMP, NAD+, NADH, NADP+, NADPH concentration and labeling
@@ -760,7 +968,7 @@ Plot
 plot3<-energy%>%
          
   ggplot(., aes(y=log.intensity.norm, x=treatment, color=lifestage)) + 
-  facet_wrap(~species*Compound, scales="free")+
+  facet_wrap(~Compound*species, scales="free")+
   geom_boxplot(position=position_dodge(0.8))+
   geom_point(position=position_dodge(0.8))+
   scale_fill_manual(values=c("gray", "purple"))+
@@ -777,6 +985,55 @@ plot3<-energy%>%
     axis.title = element_text(face="bold")
     );plot3
 ```
+
+Run test using linear models. 
+
+```{r}
+results_acropora <- energy %>%
+  filter(species == "Acropora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term == "treatment") %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(p_adj_fdr)
+
+results_acropora
+
+```
+
+No effect of treatment on energy cofactors in Acropora.   
+
+```{r}
+results_pocillopora <- energy %>%
+  filter(species == "Pocillopora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ treatment*lifestage, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("treatment", "lifestage", "treatment:lifestage")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results_pocillopora
+
+```
+
+ADP (higehr in larvae), AMP (lower in larvae), NADP+ (higher in larvae), NADPH (lower in larvae), dAMP (lower in larvae) all affected by lifestage. NAD+ decreases with temp in recruits but not in larvae and is higher in larvae. 
 
 ## Enrichment
 
@@ -804,7 +1061,7 @@ Plot
 plot4<-energy2%>%
          
   ggplot(., aes(y=enrichment, x=treatment, color=lifestage)) + 
-  facet_wrap(~species*Compound, scales="free")+
+  facet_wrap(~Compound*species, scales="free")+
   geom_boxplot(position=position_dodge(0.8))+
   geom_point(position=position_dodge(0.8))+
   scale_fill_manual(values=c("gray", "purple"))+
@@ -821,6 +1078,33 @@ plot4<-energy2%>%
     axis.title = element_text(face="bold")
     );plot4
 ```
+
+Run test using linear models. 
+
+```{r}
+results_acropora <- energy2 %>%
+  filter(species == "Acropora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term == "treatment") %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(p_adj_fdr)
+
+results_acropora
+
+```
+
+No effect of treatment on energy cofactor enrichment in Acropora.   
+
+Missing data for larvae, not analyzed here.  
 
 # Nitrogen metabolism: Glutamine and glutamate and dipeptide concentration and labeling 
 
@@ -854,7 +1138,7 @@ Plot
 plot5<-nitrogen%>%
          
   ggplot(., aes(y=log.intensity.norm, x=treatment, color=lifestage)) + 
-  facet_wrap(~species*Compound, scales="free")+
+  facet_wrap(~Compound*species, scales="free")+
   geom_boxplot(position=position_dodge(0.8))+
   geom_point(position=position_dodge(0.8))+
   scale_fill_manual(values=c("gray", "purple"))+
@@ -870,6 +1154,140 @@ plot5<-nitrogen%>%
     axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
     axis.title = element_text(face="bold")
     );plot5
+```
+
+Run test using linear models. 
+
+```{r}
+results_acropora <- nitrogen %>%
+  filter(species == "Acropora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term == "treatment") %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(p_adj_fdr)
+
+results_acropora
+
+```
+
+Treatment affects arginine glutamine (higher at 33°C) only.   
+
+```{r}
+results_pocillopora <- nitrogen %>%
+  filter(species == "Pocillopora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ treatment*lifestage, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("treatment", "lifestage", "treatment:lifestage")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results_pocillopora
+
+```
+
+Glutamine modulated by temperature with higher concentrations in larvae and only recruits showing higher concentrations at 33°C. Arginine-glutamine (higher in larvae), glutamate (higher in larvae), and glutamine (higher in larvae) are affected by lifestage.  
+
+### Plot Glutamate only 
+
+```{r}
+plot_glutamate<-nitrogen%>%
+  filter(Compound=="Glutamate")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(log.intensity.norm, na.rm=TRUE), se=sd(log.intensity.norm, na.rm=TRUE)/length(log.intensity.norm))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Glutamate Concentration")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_glutamate
+
+ggsave(filename="figures/isotopes/glutamate_concentration.png", plot_glutamate, width=6, height=5)
+```
+
+### Plot glutamine only 
+
+
+```{r}
+plot_glutamine<-nitrogen%>%
+  filter(Compound=="Glutamine")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(log.intensity.norm, na.rm=TRUE), se=sd(log.intensity.norm, na.rm=TRUE)/length(log.intensity.norm))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Glutamine Concentration")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_glutamine
+
+ggsave(filename="figures/isotopes/glutamine_concentration.png", plot_glutamine, width=6, height=5)
+```
+
+### Plot arginine-glutamine only 
+
+```{r}
+plot_dipep<-nitrogen%>%
+  filter(Compound=="Arginine-Glutamine")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(log.intensity.norm, na.rm=TRUE), se=sd(log.intensity.norm, na.rm=TRUE)/length(log.intensity.norm))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Arginine-Glutamine Concentration")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_dipep
+
+ggsave(filename="figures/isotopes/arg-glu_concentration.png", plot_dipep, width=6, height=5)
 ```
 
 ## Enrichment
@@ -898,7 +1316,7 @@ Plot
 plot6<-nitrogen2%>%
          
   ggplot(., aes(y=enrichment, x=treatment, color=lifestage)) + 
-  facet_wrap(~species*Compound, scales="free")+
+  facet_wrap(~Compound*species, scales="free")+
   geom_boxplot(position=position_dodge(0.8))+
   geom_point(position=position_dodge(0.8))+
   scale_fill_manual(values=c("gray", "purple"))+
@@ -916,8 +1334,135 @@ plot6<-nitrogen2%>%
     );plot6
 ```
 
+Run test using linear models. 
 
+```{r}
+results_acropora <- nitrogen2 %>%
+  filter(species == "Acropora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term == "treatment") %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(p_adj_fdr)
 
+results_acropora
 
+```
 
+Treatment affects enrichment of arginine-glutamine (higher at 33C).  
 
+```{r}
+results_pocillopora <- nitrogen2 %>%
+  filter(species == "Pocillopora") %>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ treatment*lifestage, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("treatment", "lifestage", "treatment:lifestage")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results_pocillopora
+
+```
+
+Glutamate affected by treatment (lower at 33°C), and also modulated by lifestage (higer at 30°C in larvae and lower at 33°C in larvae). Glutamine is lower in larvae.   
+
+### Plot Glutamate only 
+
+```{r}
+plot_glutamate2<-nitrogen2%>%
+  filter(Compound=="Glutamate")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(enrichment, na.rm=TRUE), se=sd(enrichment, na.rm=TRUE)/length(enrichment))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Glutamate Enrichment")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_glutamate2
+
+ggsave(filename="figures/isotopes/glutamate_enrichment.png", plot_glutamate2, width=6, height=5)
+```
+
+### Plot glutamine only 
+
+```{r}
+plot_glutamine2<-nitrogen2%>%
+  filter(Compound=="Glutamine")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(enrichment, na.rm=TRUE), se=sd(enrichment, na.rm=TRUE)/length(enrichment))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Glutamine Enrichment")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_glutamine2
+
+ggsave(filename="figures/isotopes/glutamine_enrichment.png", plot_glutamine2, width=6, height=5)
+```
+
+### Plot arginine-glutamine only 
+
+```{r}
+plot_dipep2<-nitrogen2%>%
+  filter(Compound=="Arginine-Glutamine")%>%
+  group_by(species, treatment, lifestage)%>%
+  summarise(mean=mean(enrichment, na.rm=TRUE), se=sd(enrichment, na.rm=TRUE)/length(enrichment))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, linetype=lifestage)) + 
+  geom_point(position=position_dodge(0.2), size=4)+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.2), width=0)+
+  geom_line(aes(group=interaction(lifestage, species)), position=position_dodge(0.2))+
+  theme_classic()+
+  scale_color_manual(values=c("orange", "purple3"), name="")+
+  scale_linetype_manual(values=c("dashed", "solid"), name="")+
+  xlab("Temperature (°C)")+
+  ylab("Arginine-Glutamine Enrichment")+
+  theme(
+    legend.position="right", 
+    text = element_text(size = 14, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black"), 
+    axis.title = element_text(face="bold")
+    );plot_dipep2
+
+ggsave(filename="figures/isotopes/arg-glu_enrichment.png", plot_dipep2, width=6, height=5)
+```
