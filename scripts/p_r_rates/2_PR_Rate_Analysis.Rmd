@@ -278,6 +278,9 @@ summary(model1)
 
 emm<-emmeans(model1, ~Lifestage | Species)
 pairs(emm)
+
+emm<-emmeans(model1, ~Species)
+pairs(emm)
 ```
 Lifestage x species is significant. Adult POR higher than recruit. 
 
@@ -287,6 +290,9 @@ model2<-aov(LEDR~Lifestage*Species*Temperature, data=pr_wide)
 summary(model2)
 
 emm<-emmeans(model2, ~Lifestage | Species)
+pairs(emm)
+
+emm<-emmeans(model2, ~Species)
 pairs(emm)
 
 emm<-emmeans(model2, ~Temperature)
@@ -309,6 +315,15 @@ emm<-emmeans(model3, ~Lifestage | Temperature | Species)
 pairs(emm)
 ```
 Pnet affected by lifestage x species and lifestage x temperature. POR adults higher than recruit. Adults are higher than recruits at 27°C and 30°C in POR only. Pnet is decreased at 33°C in adult POC but not recruits. 
+
+PR Ratio
+```{r}
+model4<-aov(PR_ratio~Lifestage*Species*Temperature, data=pr_wide)
+summary(model4)
+
+emm<-emmeans(model4, ~Temperature)
+pairs(emm)
+```
 
 # View metabolic rates in a regression by recruit size 
 

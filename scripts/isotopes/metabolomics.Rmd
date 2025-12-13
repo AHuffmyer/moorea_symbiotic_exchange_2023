@@ -14,12 +14,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-OVERALL: 
-
-- Lifestage specific metabolism
-- Lifestage specific energetic stress/strategies
-- Species specific response to temp
-
 This script analyzes stable isotope metabolomic data for the 2023 Moorea symbiotic nutritional exchange project.  
 
 # Set Up 
@@ -731,6 +725,30 @@ results_pocillopora
 
 Glucose is affected by treatment in Pocillopora. a-ketoglutarate (lower in larvae), fructose (lower in larvae), glucose-6-phosphate (higher in larvae), lactate (higher in larvae), and pyruvate (higher in larvae) are affected by lifestage.
 
+Run test by group. 
+
+```{r}
+results <- carbon %>%
+  mutate(group=paste0(species, "-", lifestage))%>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ group*treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("group", "treatment", "group:treatment")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results
+
+```
+
 ### Plot glucose only 
 
 ```{r}
@@ -797,6 +815,42 @@ carbon2<-merged_enrichment%>%
 
 head(carbon2)
 ```
+
+Compare glucose enrichment between light and dark conditions. 
+
+```{r}
+plot_dark<-merged_enrichment%>%
+  filter(Compound=="Glucose")%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!treatment=="unlabeled")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(treatment %in% c("27", "dark"))%>%
+  
+  group_by(species, lifestage, treatment)%>%
+  summarise(mean=mean(enrichment, na.rm=TRUE), se=sd(enrichment, na.rm=TRUE)/length(enrichment))%>%
+         
+  ggplot(., aes(y=mean, x=treatment, color=species, fill=species, pattern=lifestage)) + 
+  facet_wrap(~lifestage)+
+  geom_bar(stat="identity", position=position_dodge(0.8))+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), position=position_dodge(0.8), width=0)+
+  scale_color_manual(values=c("orange", "purple3"))+
+  scale_fill_manual(values=c("orange", "purple3"))+
+  theme_classic()+
+  xlab("Treatment")+
+  ylab("Enrichment")+
+  theme(
+    legend.position="right", 
+    panel.border=element_rect(colour="black", fill=NA, linewidth=1),
+    strip.text.x = element_text(size = 12, color = "black", face = "bold"),
+    text = element_text(size = 16, color="black"), 
+    axis.text.y = element_text(size=14, color="black"), 
+    axis.text.x = element_text(size=12, color="black", angle=90, vjust = 1, hjust=1), 
+    axis.title = element_text(face="bold")
+    );plot_dark
+
+ggsave(filename="figures/isotopes/dark_comparison.png", plot_dark, width=6, height=5)
+```
+
 
 Filter out controls and blanks for now. 
 ```{r}
@@ -879,6 +933,30 @@ results_pocillopora
 ```
 
 No effect of temperature in Pocillopora. a-ketoglutarate (less enriched in larvae), fructose-6-phosphate (less enriched in larvae), glucose (less enriched in larvae), glucoses-6-phosphate (less enriched in larvae), lactatae (less enriched in larvae), and pyruvate (less enriched in larvae) are affected by lifestage. 
+
+Run test by group. 
+
+```{r}
+results <- carbon2 %>%
+  mutate(group=paste0(species, "-", lifestage))%>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ group*treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("group", "treatment", "group:treatment")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results
+
+```
 
 ### Plot glucose only 
 
@@ -1205,6 +1283,30 @@ results_pocillopora
 
 Glutamine modulated by temperature with higher concentrations in larvae and only recruits showing higher concentrations at 33°C. Arginine-glutamine (higher in larvae), glutamate (higher in larvae), and glutamine (higher in larvae) are affected by lifestage.  
 
+Run test by group. 
+
+```{r}
+results <- nitrogen %>%
+  mutate(group=paste0(species, "-", lifestage))%>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(log.intensity.norm ~ group*treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("group", "treatment", "group:treatment")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results
+
+```
+
 ### Plot Glutamate only 
 
 ```{r}
@@ -1383,6 +1485,30 @@ results_pocillopora
 
 Glutamate affected by treatment (lower at 33°C), and also modulated by lifestage (higer at 30°C in larvae and lower at 33°C in larvae). Glutamine is lower in larvae.   
 
+Run test by group. 
+
+```{r}
+results <- nitrogen2 %>%
+  mutate(group=paste0(species, "-", lifestage))%>%
+  group_by(Compound) %>%
+  
+  do({
+    fit <- aov(enrichment ~ group*treatment, data = .)
+    tidy(fit)
+  }) %>%
+  
+  ungroup() %>%
+  
+  # keep only the treatment effect row
+  filter(term %in% c("group", "treatment", "group:treatment")) %>%
+  mutate(p_adj_fdr = p.adjust(p.value, method = "fdr")) %>%
+  arrange(Compound)%>%
+  filter(p_adj_fdr<0.05)
+
+results
+
+```
+
 ### Plot Glutamate only 
 
 ```{r}
@@ -1466,3 +1592,921 @@ plot_dipep2<-nitrogen2%>%
 
 ggsave(filename="figures/isotopes/arg-glu_enrichment.png", plot_dipep2, width=6, height=5)
 ```
+
+Try a ridge plot. 
+```{r}
+library(ggridges)
+
+ridge_dipep <- nitrogen2 %>%
+  filter(Compound == "Arginine-Glutamine") %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33")),
+    species   = factor(species),
+    lifestage = factor(lifestage)
+  )
+
+plot_dipep_ridge <- ggplot(
+  ridge_dipep,
+  aes(
+    x    = enrichment,
+    y    = treatment,
+    fill = species,
+    color = species
+  )
+) +
+  geom_density_ridges(
+    alpha = 0.6,
+    scale = 1.2,
+    size = 0.6
+  ) +
+  facet_wrap(~ lifestage, ncol = 1, scales = "free_y") +
+  scale_fill_manual(values = c("orange", "purple3")) +
+  scale_color_manual(values = c("orange", "purple3")) +
+  labs(
+    x = "Arginine–Glutamine Enrichment",
+    y = "Temperature (°C)",
+    fill = "Species",
+    color = "Species"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text = element_text(size = 14, face = "bold"),
+    text       = element_text(size = 14, color = "black"),
+    axis.text  = element_text(size = 12, color = "black"),
+    legend.position = "right"
+  )
+
+plot_dipep_ridge
+
+```
+
+Show all nitrogen metabolites in one ridge plot. 
+
+```{r}
+ridge_three <- nitrogen2 %>%
+  filter(Compound %in% c("Glutamine", "Glutamate", "Arginine-Glutamine")) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33")),
+    Compound  = factor(Compound,
+                       levels = c("Glutamine", "Glutamate", "Arginine-Glutamine")),
+    species   = factor(species),
+    lifestage = factor(lifestage)
+  )
+
+plot_ridge_three <- ggplot(
+  ridge_three,
+  aes(
+    x     = enrichment,
+    y     = treatment,
+    fill  = species,
+    color = species
+  )
+) +
+  geom_density_ridges(
+    alpha = 0.6,
+    scale = 1.1,
+    size  = 0.5
+  ) +
+  facet_grid(Compound ~ lifestage, scales = "free_y") +
+  scale_fill_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_color_manual(values = c("orange", "purple3"), guide = "none") +
+  labs(
+    x = "13C enrichment",
+    y = "Temperature (°C)"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 12, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 11, color = "black"),
+    legend.position = "right"
+  )
+
+plot_ridge_three
+
+```
+
+Try a lollipop plot. 
+```{r}
+dipep_summary <- nitrogen2 %>%
+  filter(Compound == "Arginine-Glutamine") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(mean_enrich = mean(enrichment, na.rm = TRUE),
+            se = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+            .groups = "drop") %>%
+  group_by(species, lifestage) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33")),
+    ref27     = mean_enrich[treatment == "27"],
+    delta     = mean_enrich - ref27
+  ) %>%
+  ungroup()%>%
+  filter(!treatment=="27")
+
+gg_lollipop <- ggplot(
+  dipep_summary,
+  aes(x = treatment, y = delta, color = species)
+) +
+  # baseline
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.4) +
+
+  # vertical lollipop sticks (NO dodge)
+  geom_segment(aes(xend = treatment, y = 0, yend = delta),
+               linewidth = 1.1) +
+
+  # lollipop heads
+  geom_point(aes(shape = species),
+             size = 4.5,
+             stroke = 1.2,
+             fill = "white") +
+
+  # error bars
+  #geom_errorbar(aes(ymin = delta - se,
+  #                  ymax = delta + se),
+  #              width = 0.06,
+  #              linewidth = 0.8) +
+
+  facet_wrap(~ lifestage) +
+  theme_classic() +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Species") +
+  labs(
+    x = "Temperature (°C)",
+    y = "Δ Enrichment relative to 27°C"
+  ) +
+  theme(
+    text        = element_text(size = 14, color = "black"),
+    axis.text   = element_text(size = 12, color = "black"),
+    axis.title  = element_text(face = "bold"),
+    strip.text  = element_text(size = 13, face = "bold"),
+    legend.position = "right"
+  )
+
+gg_lollipop
+
+```
+
+# Strategy plots for specific targets 
+
+Make a master data frame 
+
+```{r}
+merged_metabolites<-merged_metabolites%>%
+  select(!polarity)%>%
+  select(!intensity.norm)
+
+all_data<-left_join(merged_metabolites, merged_enrichment)
+head(all_data)
+
+all_data<-all_data%>%
+  filter(!lifestage=="Blank")%>%
+  filter(!lifestage=="Ctrl")%>%
+  filter(!isotope=="12C")%>%
+  filter(!treatment=="dark")
+
+head(all_data)
+```
+
+Plot enrichment and concentration in one plot. 
+
+Glucose
+```{r}
+library(ggrepel)   # for nice labels (install.packages("ggrepel") if needed)
+
+# 1. Summarise glucose concentration & enrichment
+glucose_sum <- all_data %>%
+  filter(Compound == "Glucose") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_glucose_strategy <- ggplot(
+  glucose_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = species,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  geom_path(aes(group = interaction(species, lifestage)),
+            linewidth = 0.7,
+            arrow = arrow(type = "closed",
+                          length = unit(0.15, "cm")),
+            alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  geom_text_repel(aes(label = treatment),
+                  size = 4,
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+  labs(
+    x = "Glucose concentration",
+    y = "Glucose 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_glucose_strategy
+
+ggsave(filename="figures/isotopes/glucose-strategy.png", plot_glucose_strategy, width=6, height=5)
+```
+
+Pyruvate
+```{r}
+# 1. Summarise glucose concentration & enrichment
+pyruvate_sum <- all_data %>%
+  filter(Compound == "Pyruvate") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_pyruvate_strategy <- ggplot(
+  pyruvate_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = species,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  geom_path(aes(group = interaction(species, lifestage)),
+            linewidth = 0.7,
+            arrow = arrow(type = "closed",
+                          length = unit(0.15, "cm")),
+            alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  geom_text_repel(aes(label = treatment),
+                  size = 4,
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+  labs(
+    x = "Pyruvate concentration",
+    y = "Pyruvate 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_pyruvate_strategy
+
+ggsave(filename="figures/isotopes/pyruvate-strategy.png", plot_pyruvate_strategy, width=6, height=5)
+```
+
+Glutamate
+```{r}
+# 1. Summarise glucose concentration & enrichment
+glutamate_sum <- all_data %>%
+  filter(Compound == "Glutamate") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_glutamate_strategy <- ggplot(
+  glutamate_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = species,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  geom_path(aes(group = interaction(species, lifestage)),
+            linewidth = 0.7,
+            arrow = arrow(type = "closed",
+                          length = unit(0.15, "cm")),
+            alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  geom_text_repel(aes(label = treatment),
+                  size = 4,
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+  labs(
+    x = "Glutamate concentration",
+    y = "Glutamate 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_glutamate_strategy
+
+ggsave(filename="figures/isotopes/glutamate-strategy.png", plot_glutamate_strategy, width=6, height=5)
+```
+
+Glutamine
+```{r}
+# 1. Summarise glucose concentration & enrichment
+glutamine_sum <- all_data %>%
+  filter(Compound == "Glutamine") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_glutamine_strategy <- ggplot(
+  glutamine_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = species,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  geom_path(aes(group = interaction(species, lifestage)),
+            linewidth = 0.7,
+            arrow = arrow(type = "closed",
+                          length = unit(0.15, "cm")),
+            alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  geom_text_repel(aes(label = treatment),
+                  size = 4,
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+  labs(
+    x = "Glutamine concentration",
+    y = "Glutamine 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_glutamine_strategy
+
+ggsave(filename="figures/isotopes/glutamine-strategy.png", plot_glutamine_strategy, width=6, height=5)
+```
+
+Arginine-Glutamine
+```{r}
+# 1. Summarise glucose concentration & enrichment
+dipep_sum <- all_data %>%
+  filter(Compound == "Arginine-Glutamine") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_dipep_strategy <- ggplot(
+  dipep_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = species,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  geom_path(aes(group = interaction(species, lifestage)),
+            linewidth = 0.7,
+            arrow = arrow(type = "closed",
+                          length = unit(0.15, "cm")),
+            alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  geom_text_repel(aes(label = treatment),
+                  size = 4,
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+  labs(
+    x = "Arginine-Glutamine concentration",
+    y = "Arginine-Glutamine 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_dipep_strategy
+
+ggsave(filename="figures/isotopes/dipep-strategy.png", plot_dipep_strategy, width=6, height=5)
+```
+
+Lactate
+```{r}
+# 1. Summarise glucose concentration & enrichment
+lactate_sum <- all_data %>%
+  filter(Compound == "Lactate") %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_lactate_strategy <- ggplot(
+  lactate_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = species,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  geom_path(aes(group = interaction(species, lifestage)),
+            linewidth = 0.7,
+            arrow = arrow(type = "closed",
+                          length = unit(0.15, "cm")),
+            alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  geom_text_repel(aes(label = treatment),
+                  size = 4,
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+  scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+  labs(
+    x = "Lactate concentration",
+    y = "Lactate 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_lactate_strategy
+
+ggsave(filename="figures/isotopes/lactate-strategy.png", plot_lactate_strategy, width=6, height=5)
+```
+
+# Strategy plots for all metabolites 
+
+```{r}
+all_data$group<-paste(all_data$species, all_data$lifestage)
+```
+
+Output a table of full permanova results. 
+
+```{r}
+permanova_results <- vector("list", length(compounds))
+names(permanova_results) <- compounds
+
+for (cmp in compounds) {
+
+  df_cmp <- all_data %>%
+    filter(Compound == cmp) %>%
+    mutate(
+      treatment = as.character(treatment),
+      treatment = if (all(treat_levels %in% treatment))
+        factor(treatment, levels = treat_levels) else factor(treatment),
+      group = interaction(species, lifestage, drop = TRUE)
+    ) %>%
+    select(log.intensity.norm, enrichment, group, treatment) %>%
+    drop_na()
+
+  # defaults
+  n_obs <- nrow(df_cmp)
+
+  p_group <- p_temp <- p_int <- NA_real_
+  r2_group <- r2_temp <- r2_int <- NA_real_
+  f_group <- f_temp <- f_int <- NA_real_
+  df_group <- df_temp <- df_int <- NA_real_
+
+  ran <- FALSE
+  note <- NA_character_
+
+  if (n_obs >= 6 &&
+      nlevels(df_cmp$group) >= 2 &&
+      nlevels(df_cmp$treatment) >= 2 &&
+      sd(df_cmp$log.intensity.norm) > 0 &&
+      sd(df_cmp$enrichment) > 0) {
+
+    X <- scale(as.matrix(df_cmp[, c("log.intensity.norm", "enrichment")]))
+    if (!anyNA(X)) {
+
+      dist_mat <- dist(X, method = "euclidean")
+
+      # -----------------------
+      # 1) Additive model: main effects
+      # -----------------------
+      perm_add <- adonis2(
+        dist_mat ~ group + treatment,
+        data = df_cmp,
+        permutations = 999,
+        by = "margin"
+      )
+
+      if ("group" %in% rownames(perm_add)) {
+        p_group  <- perm_add["group", "Pr(>F)"]
+        r2_group <- perm_add["group", "R2"]
+        f_group  <- perm_add["group", "F"]
+        df_group <- perm_add["group", "Df"]
+      }
+
+      if ("treatment" %in% rownames(perm_add)) {
+        p_temp  <- perm_add["treatment", "Pr(>F)"]
+        r2_temp <- perm_add["treatment", "R2"]
+        f_temp  <- perm_add["treatment", "F"]
+        df_temp <- perm_add["treatment", "Df"]
+      }
+
+      # -----------------------
+      # 2) Full model: interaction
+      # -----------------------
+      perm_full <- adonis2(
+        dist_mat ~ group * treatment,
+        data = df_cmp,
+        permutations = 999,
+        by = "terms"
+      )
+
+      if ("group:treatment" %in% rownames(perm_full)) {
+        p_int  <- perm_full["group:treatment", "Pr(>F)"]
+        r2_int <- perm_full["group:treatment", "R2"]
+        f_int  <- perm_full["group:treatment", "F"]
+        df_int <- perm_full["group:treatment", "Df"]
+      }
+
+      ran <- TRUE
+
+    } else {
+      note <- "NA after scaling (zero variance)"
+    }
+
+  } else {
+    note <- "Insufficient data or variance"
+  }
+
+  permanova_results[[cmp]] <- tibble(
+    Compound = cmp,
+    n_observations = n_obs,
+
+    df_group = df_group,
+    F_group  = f_group,
+    R2_group = r2_group,
+    p_group  = p_group,
+
+    df_temperature = df_temp,
+    F_temperature  = f_temp,
+    R2_temperature = r2_temp,
+    p_temperature  = p_temp,
+
+    df_group_temp  = df_int,
+    F_group_temp   = f_int,
+    R2_group_temp  = r2_int,
+    p_group_temp   = p_int,
+
+    ran_permanova = ran,
+    note = note
+  )
+}
+
+permanova_table <- bind_rows(permanova_results)
+
+# Optional: FDR correction per term
+permanova_table <- permanova_table %>%
+  mutate(
+    p_group_FDR        = p.adjust(p_group, method = "fdr"),
+    p_temperature_FDR  = p.adjust(p_temperature, method = "fdr"),
+    p_group_temp_FDR   = p.adjust(p_group_temp, method = "fdr")
+  )
+
+permanova_table
+
+write_csv(permanova_table, "output/isotopes/permanova_strategies.csv")
+
+# create a lookup table for plotting
+perm_lookup <- permanova_table %>%
+  mutate(
+    Compound = trimws(as.character(Compound)),   # ensures matching
+    ran_permanova = as.logical(ran_permanova)    # ensures TRUE/FALSE not "TRUE"/1
+  ) %>%
+  distinct(Compound, .keep_all = TRUE)
+```
+
+Loop through for all metabolites and run a PERMANOVA test on the 2D strategy space (concentration x enrichment).  
+```{r}
+library(grid)
+library(vegan)
+library(ggtext)
+
+out_dir <- "figures/isotopes/strategy_plots"
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+compounds <- sort(unique(all_data$Compound))
+treat_levels <- c("27","30","33")
+
+safe_name <- function(x) {
+  x %>%
+    str_trim() %>%
+    str_replace_all("[/\\\\]", "_") %>%
+    str_replace_all("[^A-Za-z0-9._-]+", "_")
+}
+
+fmt_p <- function(p) {
+  if (is.na(p)) "NA"
+  else if (p < 0.001) "<0.001"
+  else sprintf("%.3f", p)
+}
+
+fmt_r2 <- function(r2) {
+  if (is.na(r2)) "NA"
+  else sprintf("%.3f", r2)
+}
+
+for (cmp in compounds) {
+
+  # ===========================
+  # A) PERMANOVA (replicate-level)
+  # ===========================
+  df_cmp <- all_data %>%
+    filter(Compound == cmp) %>%
+    mutate(
+      treatment = as.character(treatment),
+      treatment = if (all(treat_levels %in% treatment)) factor(treatment, levels = treat_levels) else factor(treatment),
+      group     = interaction(species, lifestage, drop = TRUE)
+    ) %>%
+    select(log.intensity.norm, enrichment, group, treatment) %>%
+    tidyr::drop_na()
+
+# pull results for this metabolite
+perm_vals <- perm_lookup %>% filter(Compound == cmp)
+
+# Safe getters (avoid "length zero")
+get1 <- function(x) if (length(x) == 0) NA_real_ else x[1]
+get1_chr <- function(x) if (length(x) == 0) NA_character_ else x[1]
+
+ran_flag <- get1(perm_vals$ran_permanova)
+note_txt <- get1_chr(perm_vals$note)
+
+bold_if_sig <- function(line, p) {
+  if (!is.na(p) && p < 0.05) paste0("<b>", line, "</b>") else line
+}
+
+perm_vals <- perm_lookup %>% filter(Compound == trimws(as.character(cmp)))
+
+if (nrow(perm_vals) == 0) {
+  perm_label <- "PERMANOVA not run<br/>(no lookup match)"
+} else if (isFALSE(perm_vals$ran_permanova[1])) {
+  perm_label <- paste0("PERMANOVA not run<br/>", perm_vals$note[1])
+} else {
+
+  l1 <- paste0("group: pFDR=", fmt_p(perm_vals$p_group_FDR[1]),
+               "  R²=", fmt_r2(perm_vals$R2_group[1]))
+  l2 <- paste0("temp : pFDR=", fmt_p(perm_vals$p_temperature_FDR[1]),
+               "  R²=", fmt_r2(perm_vals$R2_temperature[1]))
+  l3 <- paste0("g×t  : pFDR=", fmt_p(perm_vals$p_group_temp_FDR[1]),
+               "  R²=", fmt_r2(perm_vals$R2_group_temp[1]))
+
+  perm_label <- paste0(
+    "PERMANOVA (scaled Euclid)<br/>",
+    bold_if_sig(l1, perm_vals$p_group_FDR[1]), "<br/>",
+    bold_if_sig(l2, perm_vals$p_temperature_FDR[1]), "<br/>",
+    bold_if_sig(l3, perm_vals$p_group_temp_FDR[1])
+  )
+}
+
+
+  # ===========================
+  # B) Summary for plotting (means + SE)
+  # ===========================
+  cmp_sum <- all_data %>%
+    filter(Compound == cmp) %>%
+    group_by(species, lifestage, treatment) %>%
+    summarise(
+      mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+      se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(sum(!is.na(log.intensity.norm))),
+      mean_enrich = mean(enrichment, na.rm = TRUE),
+      se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(sum(!is.na(enrichment))),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      treatment = as.character(treatment),
+      treatment = if (all(treat_levels %in% treatment)) factor(treatment, levels = treat_levels) else factor(treatment)
+    )
+
+  if (nrow(cmp_sum) == 0) next
+
+  # ===========================
+  # C) Plot (annotation outside panel)
+  # ===========================
+  p <- ggplot(
+    cmp_sum,
+    aes(x = mean_conc, y = mean_enrich, color = species, shape = lifestage)
+  ) +
+    geom_errorbarh(aes(xmin = mean_conc - se_conc, xmax = mean_conc + se_conc),
+                   height = 0, linewidth = 0.6, alpha = 0.7) +
+    geom_errorbar(aes(ymin = mean_enrich - se_enrich, ymax = mean_enrich + se_enrich),
+                  width = 0, linewidth = 0.6, alpha = 0.7) +
+    geom_path(aes(group = interaction(species, lifestage)),
+              linewidth = 0.7,
+              arrow = arrow(type = "closed", length = unit(0.15, "cm")),
+              alpha = 0.7) +
+    geom_point(size = 4, stroke = 1.2, fill = "white") +
+    geom_text_repel(aes(label = treatment),
+                    size = 4, show.legend = FALSE, max.overlaps = Inf) +
+    scale_color_manual(values = c("orange", "purple3"), name = "Species") +
+    scale_shape_manual(values = c(21, 24), name = "Lifestage") +
+    labs(
+      x = paste0(cmp, " concentration"),
+      y = paste0(cmp, " 13C enrichment")
+    ) +
+    # Put label OUTSIDE the panel on the right
+ggtext::geom_richtext(
+  data = data.frame(x = Inf, y = Inf, lab = perm_label),
+  aes(x = x, y = y, label = lab),
+  hjust = -0.05, vjust = 1.05,
+  size = 3.6,
+  label.size = 0.25,
+  fill = "white",
+  inherit.aes = FALSE
+)+
+    coord_cartesian(clip = "off") +
+    theme_classic() +
+    theme(
+      text = element_text(size = 14, color = "black"),
+      axis.text = element_text(size = 12, color = "black"),
+      axis.title = element_text(face = "bold"),
+      legend.position = "right",
+      plot.margin = margin(t = 10, r = 120, b = 10, l = 10)  # extra right margin for the label
+    )
+
+  # ===========================
+  # D) Save
+  # ===========================
+  file_base <- paste0(safe_name(cmp), "-strategy")
+  ggsave(
+    filename = file.path(out_dir, paste0(file_base, ".png")),
+    plot = p,
+    width = 7.5,   # slightly wider to accommodate outside annotation
+    height = 5,
+    dpi = 300
+  )
+}
+
+```
+
