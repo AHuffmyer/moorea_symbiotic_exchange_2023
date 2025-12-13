@@ -2510,3 +2510,288 @@ ggtext::geom_richtext(
 
 ```
 
+
+# Strategy plot for glycolysis pathway 
+
+```{r}
+glycolysis_mets <- c(
+  "Glucose",
+  "Glucose-6-phosphate",
+  "Fructose-6-phosphate",
+  "Pyruvate"
+)
+```
+
+```{r}
+glyco_centroid <- all_data %>%
+  filter(Compound %in% glycolysis_mets) %>%
+  group_by(sample, species, lifestage, treatment) %>%
+  summarise(
+    pathway_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    pathway_enrich = mean(enrichment, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+```{r}
+glyco_mat <- all_data %>%
+  filter(Compound %in% glycolysis_mets) %>%
+  select(sample, species, lifestage, treatment,
+         Compound, log.intensity.norm, enrichment) %>%
+  pivot_longer(
+    cols = c(log.intensity.norm, enrichment),
+    names_to = "metric",
+    values_to = "value"
+  ) %>%
+  unite(var, Compound, metric) %>%
+  pivot_wider(
+    names_from = var,
+    values_from = value
+  ) %>%
+  drop_na()
+```
+
+```{r}
+X <- glyco_mat %>%
+  select(-sample, -species, -lifestage, -treatment) %>%
+  scale()
+
+glyco_pca <- prcomp(X, center = TRUE, scale. = TRUE)
+```
+
+```{r}
+pca_df <- as.data.frame(glyco_pca$x) %>%
+  bind_cols(glyco_mat %>% select(species, lifestage, treatment))
+
+ggplot(pca_df,
+       aes(PC1, PC2,
+           color = species,
+           shape = lifestage,
+           group = interaction(species, lifestage))) +
+  geom_path(aes(group = interaction(species, lifestage)),
+            arrow = arrow(length = unit(0.15, "cm")),
+            alpha = 0.6) +
+  scale_color_manual(values=c("orange", "purple"))+
+  geom_point(size = 3) +
+  facet_wrap(~ treatment) +
+  theme_classic()
+```
+
+Try centroid method. 
+```{r}
+glyco_group_centroid <- glyco_centroid %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(pathway_conc, na.rm = TRUE),
+    mean_enrich = mean(pathway_enrich, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+```
+
+```{r}
+ggplot() +
+
+  # --------------------
+  # Replicate-level points (transparent)
+  # --------------------
+  geom_point(
+    data = glyco_centroid,
+    aes(
+      pathway_conc,
+      pathway_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 3,
+    alpha = 0.35
+  ) +
+
+  # --------------------
+  # Centroid trajectories (colored arrows)
+  # --------------------
+  geom_path(
+    data = glyco_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      group = interaction(species, lifestage),
+      color = species      # <<< match species color
+    ),
+    linewidth = 1.2,
+    alpha = 1,
+    arrow = arrow(
+      type = "closed",
+      length = unit(0.2, "cm")
+    )
+  ) +
+
+  # --------------------
+  # Centroid points (same color & shape as group)
+  # --------------------
+  geom_point(
+    data = glyco_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 4.5,
+    stroke = 1.2,
+    fill = "white"   # works for shapes 21/24
+  ) +
+
+  # --------------------
+  # Temperature labels at centroids
+  # --------------------
+  geom_text_repel(
+    data = glyco_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      label = treatment,
+      color = species
+    ),
+    size = 4,
+    show.legend = FALSE
+  ) +
+
+  scale_color_manual(values = c("orange", "purple")) +
+  scale_shape_manual(values = c(21, 24)) +
+
+  theme_classic() +
+  labs(
+    x = "Glycolysis pathway concentration",
+    y = "Glycolysis pathway 13C enrichment", 
+    title = "Glycolysis Pathway"
+  )
+```
+
+
+
+
+# Strategy plot for GS-GOGAT pathway 
+
+```{r}
+gogat_mets <- c(
+  "Glutamine",
+  "Glutamate",
+  "a-ketoglutarate",
+  "Arginine-Glutamine", 
+  "Arginine"
+)
+```
+
+```{r}
+gogat_centroid <- all_data %>%
+  filter(Compound %in% gogat_mets) %>%
+  droplevels() %>%
+  group_by(sample, species, lifestage, treatment) %>%
+  summarise(
+    pathway_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    pathway_enrich = mean(enrichment, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+levels(gogat_centroid$Compound)
+```
+
+
+Try centroid method. 
+```{r}
+gogat_group_centroid <- gogat_centroid %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(pathway_conc, na.rm = TRUE),
+    mean_enrich = mean(pathway_enrich, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+```
+
+```{r}
+ggplot() +
+
+  # --------------------
+  # Replicate-level points (transparent)
+  # --------------------
+  geom_point(
+    data = gogat_centroid,
+    aes(
+      pathway_conc,
+      pathway_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 3,
+    alpha = 0.35
+  ) +
+
+  # --------------------
+  # Centroid trajectories (colored arrows)
+  # --------------------
+  geom_path(
+    data = gogat_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      group = interaction(species, lifestage),
+      color = species      # <<< match species color
+    ),
+    linewidth = 1.2,
+    alpha = 1,
+    arrow = arrow(
+      type = "closed",
+      length = unit(0.2, "cm")
+    )
+  ) +
+
+  # --------------------
+  # Centroid points (same color & shape as group)
+  # --------------------
+  geom_point(
+    data = gogat_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 4.5,
+    stroke = 1.2,
+    fill = "white"   # works for shapes 21/24
+  ) +
+
+  # --------------------
+  # Temperature labels at centroids
+  # --------------------
+  geom_text_repel(
+    data = gogat_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      label = treatment,
+      color = species
+    ),
+    size = 4,
+    show.legend = FALSE
+  ) +
+
+  scale_color_manual(values = c("orange", "purple")) +
+  scale_shape_manual(values = c(21, 24)) +
+
+  theme_classic() +
+  labs(
+    x = "GS-GOGAT pathway concentration",
+    y = "GS-GOGAT pathway 13C enrichment", 
+    title = "GS-GOGAT Pathway"
+  )
+```
+
+
+
