@@ -2914,3 +2914,123 @@ ggplot() +
 ggsave("figures/isotopes/tca-pathway-strategy.png", width=7, height=5)
 ```
 
+
+# Strategy plot for energy cofactors  
+
+```{r}
+energy_mets <- c(
+  "NAD+", 
+  "NADP+", 
+  "ADP", 
+  "AMP"
+)
+```
+
+```{r}
+energy_centroid <- all_data %>%
+  filter(Compound %in% energy_mets) %>%
+  droplevels() %>%
+  group_by(sample, species, lifestage, treatment) %>%
+  summarise(
+    pathway_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    pathway_enrich = mean(enrichment, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+
+Try centroid method. 
+```{r}
+energy_group_centroid <- energy_centroid %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(pathway_conc, na.rm = TRUE),
+    mean_enrich = mean(pathway_enrich, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+```
+
+```{r}
+ggplot() +
+
+  # --------------------
+  # Replicate-level points (transparent)
+  # --------------------
+  geom_point(
+    data = energy_centroid,
+    aes(
+      pathway_conc,
+      pathway_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 3,
+    alpha = 0.35
+  ) +
+
+  # --------------------
+  # Centroid trajectories (colored arrows)
+  # --------------------
+  geom_path(
+    data = energy_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      group = interaction(species, lifestage),
+      color = species      # <<< match species color
+    ),
+    linewidth = 1.2,
+    alpha = 1,
+    arrow = arrow(
+      type = "closed",
+      length = unit(0.2, "cm")
+    )
+  ) +
+
+  # --------------------
+  # Centroid points (same color & shape as group)
+  # --------------------
+  geom_point(
+    data = energy_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 4.5,
+    stroke = 1.2,
+    fill = "white"   # works for shapes 21/24
+  ) +
+
+  # --------------------
+  # Temperature labels at centroids
+  # --------------------
+  geom_text_repel(
+    data = energy_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      label = treatment,
+      color = species
+    ),
+    size = 4,
+    show.legend = FALSE
+  ) +
+
+  scale_color_manual(values = c("orange", "purple")) +
+  scale_shape_manual(values = c(21, 24)) +
+
+  theme_classic() +
+  labs(
+    x = "Energy cofactors concentration",
+    y = "Energy cofactors 13C enrichment", 
+    title = "Energy Cofactors"
+  )
+
+ggsave("figures/isotopes/energy-pathway-strategy.png", width=7, height=5)
+```
+
