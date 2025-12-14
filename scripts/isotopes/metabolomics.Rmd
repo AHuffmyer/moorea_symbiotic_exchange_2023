@@ -2211,7 +2211,11 @@ all_data$group<-paste(all_data$species, all_data$lifestage)
 
 Output a table of full permanova results. 
 
+ERROR HERE - FIX "permanova_results"
 ```{r}
+compounds <- sort(unique(all_data$Compound))
+treat_levels <- c("27","30","33")
+
 permanova_results <- vector("list", length(compounds))
 names(permanova_results) <- compounds
 
@@ -2672,7 +2676,6 @@ ggplot() +
 ggsave("figures/isotopes/glycolysis-pathway-strategy.png", width=7, height=5)
 ```
 
-
 # Strategy plot for GS-GOGAT pathway 
 
 ```{r}
@@ -2792,19 +2795,20 @@ ggsave("figures/isotopes/gogat-pathway-strategy.png", width=7, height=5)
 ```
 
 
-# Strategy plot for Arg-gln pathway 
+# Strategy plot for TCA pathway 
 
 ```{r}
-dipep_mets <- c(
-  "Arginine-Glutamine", 
-  "Lysine-Glutamine", 
-  "Arginine-Alanine"
+tca_mets <- c(
+  "a-ketoglutarate", 
+  "Succinate", 
+  "Fumarate", 
+  "Malate"
 )
 ```
 
 ```{r}
-dipep_centroid <- all_data %>%
-  filter(Compound %in% dipep_mets) %>%
+tca_centroid <- all_data %>%
+  filter(Compound %in% tca_mets) %>%
   droplevels() %>%
   group_by(sample, species, lifestage, treatment) %>%
   summarise(
@@ -2817,7 +2821,7 @@ dipep_centroid <- all_data %>%
 
 Try centroid method. 
 ```{r}
-dipep_group_centroid <- dipep_centroid %>%
+tca_group_centroid <- tca_centroid %>%
   group_by(species, lifestage, treatment) %>%
   summarise(
     mean_conc   = mean(pathway_conc, na.rm = TRUE),
@@ -2836,7 +2840,7 @@ ggplot() +
   # Replicate-level points (transparent)
   # --------------------
   geom_point(
-    data = dipep_centroid,
+    data = tca_centroid,
     aes(
       pathway_conc,
       pathway_enrich,
@@ -2851,7 +2855,7 @@ ggplot() +
   # Centroid trajectories (colored arrows)
   # --------------------
   geom_path(
-    data = dipep_group_centroid,
+    data = tca_group_centroid,
     aes(
       mean_conc,
       mean_enrich,
@@ -2870,7 +2874,7 @@ ggplot() +
   # Centroid points (same color & shape as group)
   # --------------------
   geom_point(
-    data = dipep_group_centroid,
+    data = tca_group_centroid,
     aes(
       mean_conc,
       mean_enrich,
@@ -2886,7 +2890,7 @@ ggplot() +
   # Temperature labels at centroids
   # --------------------
   geom_text_repel(
-    data = dipep_group_centroid,
+    data = tca_group_centroid,
     aes(
       mean_conc,
       mean_enrich,
@@ -2902,13 +2906,11 @@ ggplot() +
 
   theme_classic() +
   labs(
-    x = "Dipeptides concentration",
-    y = "Dipeptides 13C enrichment", 
-    title = "Dipeptides"
+    x = "TCA pathway concentration",
+    y = "TCA pathway 13C enrichment", 
+    title = "TCA Pathway"
   )
 
-ggsave("figures/isotopes/dipeptides-pathway-strategy.png", width=7, height=5)
+ggsave("figures/isotopes/tca-pathway-strategy.png", width=7, height=5)
 ```
-
-
 
