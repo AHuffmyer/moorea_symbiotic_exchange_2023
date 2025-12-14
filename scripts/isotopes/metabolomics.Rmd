@@ -2668,9 +2668,9 @@ ggplot() +
     y = "Glycolysis pathway 13C enrichment", 
     title = "Glycolysis Pathway"
   )
+
+ggsave("figures/isotopes/glycolysis-pathway-strategy.png", width=7, height=5)
 ```
-
-
 
 
 # Strategy plot for GS-GOGAT pathway 
@@ -2679,9 +2679,7 @@ ggplot() +
 gogat_mets <- c(
   "Glutamine",
   "Glutamate",
-  "a-ketoglutarate",
-  "Arginine-Glutamine", 
-  "Arginine"
+  "a-ketoglutarate"
 )
 ```
 
@@ -2695,8 +2693,6 @@ gogat_centroid <- all_data %>%
     pathway_enrich = mean(enrichment, na.rm = TRUE),
     .groups = "drop"
   )
-
-levels(gogat_centroid$Compound)
 ```
 
 
@@ -2791,6 +2787,127 @@ ggplot() +
     y = "GS-GOGAT pathway 13C enrichment", 
     title = "GS-GOGAT Pathway"
   )
+
+ggsave("figures/isotopes/gogat-pathway-strategy.png", width=7, height=5)
+```
+
+
+# Strategy plot for Arg-gln pathway 
+
+```{r}
+dipep_mets <- c(
+  "Arginine-Glutamine", 
+  "Lysine-Glutamine", 
+  "Arginine-Alanine"
+)
+```
+
+```{r}
+dipep_centroid <- all_data %>%
+  filter(Compound %in% dipep_mets) %>%
+  droplevels() %>%
+  group_by(sample, species, lifestage, treatment) %>%
+  summarise(
+    pathway_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    pathway_enrich = mean(enrichment, na.rm = TRUE),
+    .groups = "drop"
+  )
+```
+
+
+Try centroid method. 
+```{r}
+dipep_group_centroid <- dipep_centroid %>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(pathway_conc, na.rm = TRUE),
+    mean_enrich = mean(pathway_enrich, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+```
+
+```{r}
+ggplot() +
+
+  # --------------------
+  # Replicate-level points (transparent)
+  # --------------------
+  geom_point(
+    data = dipep_centroid,
+    aes(
+      pathway_conc,
+      pathway_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 3,
+    alpha = 0.35
+  ) +
+
+  # --------------------
+  # Centroid trajectories (colored arrows)
+  # --------------------
+  geom_path(
+    data = dipep_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      group = interaction(species, lifestage),
+      color = species      # <<< match species color
+    ),
+    linewidth = 1.2,
+    alpha = 1,
+    arrow = arrow(
+      type = "closed",
+      length = unit(0.2, "cm")
+    )
+  ) +
+
+  # --------------------
+  # Centroid points (same color & shape as group)
+  # --------------------
+  geom_point(
+    data = dipep_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      color = species,
+      shape = lifestage
+    ),
+    size = 4.5,
+    stroke = 1.2,
+    fill = "white"   # works for shapes 21/24
+  ) +
+
+  # --------------------
+  # Temperature labels at centroids
+  # --------------------
+  geom_text_repel(
+    data = dipep_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      label = treatment,
+      color = species
+    ),
+    size = 4,
+    show.legend = FALSE
+  ) +
+
+  scale_color_manual(values = c("orange", "purple")) +
+  scale_shape_manual(values = c(21, 24)) +
+
+  theme_classic() +
+  labs(
+    x = "Dipeptides concentration",
+    y = "Dipeptides 13C enrichment", 
+    title = "Dipeptides"
+  )
+
+ggsave("figures/isotopes/dipeptides-pathway-strategy.png", width=7, height=5)
 ```
 
 
