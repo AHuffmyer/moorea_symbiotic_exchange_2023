@@ -1843,6 +1843,80 @@ plot_glucose_strategy <- ggplot(
 ggsave(filename="figures/isotopes/glucose-strategy.png", plot_glucose_strategy, width=6, height=5)
 ```
 
+Make glucose plot for specific comparisons. 
+```{r}
+# 1. Summarise glucose concentration & enrichment
+glucose_sum <- all_data %>%
+  filter(Compound == "Glucose") %>%
+  filter(!species == "Acropora")%>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_glucose_strategy <- ggplot(
+  glucose_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = treatment,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+  #geom_path(aes(group = interaction(species, lifestage)),
+  #          linewidth = 0.7,
+  #          color = "black",
+  #          arrow = arrow(type = "closed",
+  #                        length = unit(0.15, "cm")),
+  #          alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  #geom_text_repel(aes(label = treatment),
+  #                size = 4,
+  #                show.legend = FALSE,
+  #                max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("darkblue", "orange", "red"), name = "Temperature") +
+  scale_shape_manual(values = c(16, 17), name = "Lifestage") +
+  labs(
+    x = "Glucose concentration",
+    y = "Glucose 13C enrichment"
+  ) +
+  theme_classic() +
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"), 
+    legend.position = "right"
+  ); plot_glucose_strategy
+
+ggsave(filename="figures/isotopes/glucose-strategy-subset.png", plot_glucose_strategy, width=6, height=5)
+```
+
 Pyruvate
 ```{r}
 # 1. Summarise glucose concentration & enrichment
@@ -2129,6 +2203,81 @@ plot_dipep_strategy <- ggplot(
   ); plot_dipep_strategy
 
 ggsave(filename="figures/isotopes/dipep-strategy.png", plot_dipep_strategy, width=6, height=5)
+```
+
+Subset for specific comparison
+Arginine-Glutamine
+```{r}
+# 1. Summarise glucose concentration & enrichment
+dipep_sum <- all_data %>%
+  filter(Compound == "Arginine-Glutamine") %>%
+  filter(!species=="Acropora")%>%
+  group_by(species, lifestage, treatment) %>%
+  summarise(
+    mean_conc   = mean(log.intensity.norm, na.rm = TRUE),
+    se_conc     = sd(log.intensity.norm, na.rm = TRUE) / sqrt(n()),
+    mean_enrich = mean(enrichment, na.rm = TRUE),
+    se_enrich   = sd(enrichment, na.rm = TRUE) / sqrt(n()),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    treatment = factor(treatment, levels = c("27", "30", "33"))
+  )
+
+# 2. “Strategy space” lollipop-scatter for glucose
+plot_dipep_strategy <- ggplot(
+  dipep_sum,
+  aes(x = mean_conc,
+      y = mean_enrich,
+      color = treatment,
+      shape = lifestage)
+) +
+  # error bars in both directions (optional)
+  geom_errorbarh(aes(xmin = mean_conc - se_conc,
+                     xmax = mean_conc + se_conc),
+                 height = 0,
+                 linewidth = 0.6,
+                 alpha = 0.7) +
+  geom_errorbar(aes(ymin = mean_enrich - se_enrich,
+                    ymax = mean_enrich + se_enrich),
+                width = 0,
+                linewidth = 0.6,
+                alpha = 0.7) +
+  
+  # arrows connecting temperatures for each species × lifestage
+ # geom_path(aes(group = interaction(species, lifestage)),
+  #          linewidth = 0.7,
+  #          arrow = arrow(type = "closed",
+  #                        length = unit(0.15, "cm")),
+  #          alpha = 0.7) +
+  
+  # points
+  geom_point(size = 4, stroke = 1.2, fill = "white") +
+  
+  # label points with temperature
+  #geom_text_repel(aes(label = treatment),
+  #                size = 4,
+  #                show.legend = FALSE,
+  #                max.overlaps = Inf) +
+  
+  #facet_wrap(~ lifestage) +
+  scale_color_manual(values = c("darkblue", "orange", "red"), name = "Temperature") +
+  scale_shape_manual(values = c(16, 17), name = "Lifestage") +
+  labs(
+    x = "Arginine-Glutamine concentration",
+    y = "Arginine-Glutamine 13C enrichment"
+  ) +
+  theme_classic() +
+  ylim(0,0.02)+
+  theme(
+    strip.text   = element_text(size = 13, face = "bold"),
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold"),
+    legend.position = "right"
+  ); plot_dipep_strategy
+
+ggsave(filename="figures/isotopes/dipep-strategy-subset.png", plot_dipep_strategy, width=6, height=5)
 ```
 
 Lactate
@@ -2676,6 +2825,87 @@ ggplot() +
 ggsave("figures/isotopes/glycolysis-pathway-strategy.png", width=7, height=5)
 ```
 
+Subset for specific comparisons 
+```{r}
+ggplot() +
+
+  # --------------------
+  # Replicate-level points (transparent)
+  # --------------------
+  geom_point(
+    data = glyco_centroid%>%filter(species=="Pocillopora"),
+    aes(
+      pathway_conc,
+      pathway_enrich,
+      color = treatment,
+      shape = lifestage
+    ),
+    size = 3,
+    alpha = 0.1
+  ) +
+
+  # --------------------
+  # Centroid trajectories (colored arrows)
+  # --------------------
+ # geom_path(
+  #  data = glyco_group_centroid,
+   # aes(
+  #    mean_conc,
+  #    mean_enrich,
+  #    group = interaction(species, lifestage),
+  #    color = treatment      # <<< match species color
+  #  ),
+  #  linewidth = 1.2,
+  #  alpha = 1,
+  #  arrow = arrow(
+  #    type = "closed",
+  #    length = unit(0.2, "cm")
+  #  )
+  #) +
+
+  # --------------------
+  # Centroid points (same color & shape as group)
+  # --------------------
+  geom_point(
+    data = glyco_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      color = treatment,
+      shape = lifestage
+    ),
+    size = 4.5,
+    stroke = 1.2,
+    fill = "white"   # works for shapes 21/24
+  ) +
+
+  # --------------------
+  # Temperature labels at centroids
+  # --------------------
+  #geom_text_repel(
+  #  data = glyco_group_centroid,
+  #  aes(
+  #    mean_conc,
+  #    mean_enrich,
+  #    label = treatment,
+  #    color = species
+  #  ),
+  #  size = 4,
+  #  show.legend = FALSE
+  #) +
+
+  scale_color_manual(values = c("darkblue", "orange", "red")) +
+  scale_shape_manual(values = c(16, 17)) +
+
+  theme_classic() +
+  labs(
+    x = "Glycolysis pathway concentration",
+    y = "Glycolysis pathway 13C enrichment"
+  )
+
+ggsave("figures/isotopes/glycolysis-pathway-strategy-subset.png", width=7, height=5)
+```
+
 # Strategy plot for GS-GOGAT pathway 
 
 ```{r}
@@ -2794,6 +3024,86 @@ ggplot() +
 ggsave("figures/isotopes/gogat-pathway-strategy.png", width=7, height=5)
 ```
 
+Subset for specific comparisons
+```{r}
+ggplot() +
+
+  # --------------------
+  # Replicate-level points (transparent)
+  # --------------------
+  geom_point(
+    data = gogat_centroid%>%filter(species=="Pocillopora"),
+    aes(
+      pathway_conc,
+      pathway_enrich,
+      color = treatment,
+      shape = lifestage
+    ),
+    size = 3,
+    alpha = 0.1
+  ) +
+
+  # --------------------
+  # Centroid trajectories (colored arrows)
+  # --------------------
+  #geom_path(
+  ##  data = gogat_group_centroid,
+  #  aes(
+  #    mean_conc,
+  #    mean_enrich,
+  #    group = interaction(species, lifestage),
+  #    color = species      # <<< match species color
+  #  ),
+  #  linewidth = 1.2,
+  #  alpha = 1,
+  #  arrow = arrow(
+  #    type = "closed",
+  #    length = unit(0.2, "cm")
+  #  )
+  #) +
+
+  # --------------------
+  # Centroid points (same color & shape as group)
+  # --------------------
+    geom_point(
+    data = gogat_group_centroid,
+    aes(
+      mean_conc,
+      mean_enrich,
+      color = treatment,
+      shape = lifestage
+    ),
+    size = 4.5,
+    stroke = 1.2,
+    fill = "white"   # works for shapes 21/24
+  ) +
+
+  # --------------------
+  # Temperature labels at centroids
+  # --------------------
+  #geom_text_repel(
+  #  data = gogat_group_centroid,
+  #  aes(
+  #    mean_conc,
+  #    mean_enrich,
+  #    label = treatment,
+  #    color = species
+  #  ),
+  #  size = 4,
+  #  show.legend = FALSE
+  #) +
+
+  scale_color_manual(values = c("darkblue", "orange", "red")) +
+  scale_shape_manual(values = c(16, 17)) +
+
+  theme_classic() +
+  labs(
+    x = "GS-GOGAT pathway concentration",
+    y = "GS-GOGAT pathway 13C enrichment"
+  )
+
+ggsave("figures/isotopes/gogat-pathway-strategy-subset.png", width=7, height=5)
+```
 
 # Strategy plot for TCA pathway 
 
