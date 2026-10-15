@@ -2901,9 +2901,14 @@ ggplot() +
   labs(
     x = "Glycolysis pathway concentration",
     y = "Glycolysis pathway 13C enrichment"
+  ) +
+  theme(
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold")
   )
 
-ggsave("figures/isotopes/glycolysis-pathway-strategy-subset.png", width=7, height=5)
+ggsave("figures/isotopes/glycolysis-pathway-strategy-subset.png", width=6, height=5)
 ```
 
 # Strategy plot for GS-GOGAT pathway 
@@ -3100,9 +3105,14 @@ ggplot() +
   labs(
     x = "GS-GOGAT pathway concentration",
     y = "GS-GOGAT pathway 13C enrichment"
+  ) +
+  theme(
+    text         = element_text(size = 14, color = "black"),
+    axis.text    = element_text(size = 12, color = "black"),
+    axis.title   = element_text(face = "bold")
   )
 
-ggsave("figures/isotopes/gogat-pathway-strategy-subset.png", width=7, height=5)
+ggsave("figures/isotopes/gogat-pathway-strategy-subset.png", width=6, height=5)
 ```
 
 # Strategy plot for TCA pathway 
