@@ -2867,7 +2867,7 @@ ggplot() +
   # Centroid points (same color & shape as group)
   # --------------------
   geom_point(
-    data = glyco_group_centroid,
+    data = glyco_group_centroid%>%filter(species=="Pocillopora"),
     aes(
       mean_conc,
       mean_enrich,
@@ -3071,7 +3071,7 @@ ggplot() +
   # Centroid points (same color & shape as group)
   # --------------------
     geom_point(
-    data = gogat_group_centroid,
+    data = gogat_group_centroid%>%filter(species=="Pocillopora"),
     aes(
       mean_conc,
       mean_enrich,
